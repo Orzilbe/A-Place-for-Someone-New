@@ -794,8 +794,6 @@ function beginAct2() {
   gameState.act = 2;
   hudAct.textContent = "מחזה ב׳ — השגרה";
 
-  gameState.items.forEach(i => { i.inHouse = true; });
-
   if (gameState.superstition) {
     applySuperstitionFate();
     spawnBoxes();
@@ -984,6 +982,7 @@ function increaseBabyMeter(amount) {
 
 function triggerBabyCrying() {
   gameState.stealthActive = false;
+  $("room-view").style.pointerEvents = "none";
   drainSanity(15);
   narrate(`<strong>😭 התינוקת התעוררה.</strong><br>הבכי ממלא את החדר. עצמת עיניים לשתי שניות בדיוק, ואז הלכת אליה. −15 שפיות.`);
   setChoices([
@@ -993,6 +992,7 @@ function triggerBabyCrying() {
       action: () => {
         gameState.babyMeter = 0;
         babyMeterFill.style.width = "0%";
+        $("room-view").style.pointerEvents = "";
         gameState.stealthActive = true;
         showSelfCareMenu();
       }
