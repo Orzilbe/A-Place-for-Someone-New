@@ -834,45 +834,22 @@ function spawnBoxes() {
     box.src = src;
     box.id  = `box-${item.id}`;
     box.alt = item.name;
-    box.style.cssText = `position:absolute; left:${positions[i].left}; bottom:${positions[i].bottom}; width:13%; height:auto; object-fit:contain; z-index:3; cursor:pointer; display:none`;
+    box.classList.add("box-pulse");
+    box.style.cssText = `position:absolute; left:${positions[i].left}; bottom:${positions[i].bottom}; width:13%; height:auto; object-fit:contain; z-index:3; cursor:pointer`;
     box.addEventListener("click", () => unpackBox(item, box));
     roomView.appendChild(box);
   });
-
-  // Reveal first box after the fate narrative has settled
-  setTimeout(() => showNextBox(0), 3500);
-}
-
-const BOX_ITEM_NAMES = {
-  crib:     "עריסה",
-  dresser:  "שידה",
-  stroller: "עגלה",
-  carseat:  "כיסא הבטיחות",
-  clothes:  "בגדי התינוקת",
-};
-
-function showNextBox(index) {
-  const item = gameState.items[index];
-  if (!item) return;
-  const box = $(`box-${item.id}`);
-  if (!box) return;
-  box.style.display = "block";
-  box.classList.add("box-pulse");
-  narrate(`יש לך חבילה חדשה! לחצי לפתוח את <strong>${BOX_ITEM_NAMES[item.id] || item.name}</strong>.`);
 }
 
 function unpackBox(item, boxEl) {
-  boxEl.classList.remove("box-pulse");
   boxEl.remove();
   item.inHouse = true;
   renderRoom();
   showToast(`${item.name} פוּרַק! 📦 ➡️ ${item.emoji}`);
   increaseBabyMeter(8);
+  narrate(`פרקת את <strong>${item.name}</strong>. ${document.querySelectorAll("[id^='box-']").length} קופסאות נותרו.`);
 
-  const nextIndex = gameState.items.indexOf(item) + 1;
-  if (nextIndex < gameState.items.length) {
-    setTimeout(() => showNextBox(nextIndex), 800);
-  } else {
+  if (document.querySelectorAll("[id^='box-']").length === 0) {
     narrate("כל הקופסאות רוקנו. החדר נראה כמו חדר תינוקת. הגב כואב. התינוקת מתעוררת.");
     showSelfCareMenu();
   }
