@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>מקום למישהי חדשה</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════
+       סרגל הסטטיסטיקות
+  ═══════════════════════════════════════════ -->
+  <header id="hud">
+    <span id="hud-budget">תקציב: <strong>5,000 ₪</strong></span>
+    <span id="hud-sanity">שפיות: <strong>100%</strong></span>
+    <span id="hud-items">פריטים: <strong>0 / 5</strong></span>
+    <span id="hud-act" class="act-label">נסטינג</span>
+  </header>
+
+  <!-- ═══════════════════════════════════════════
+       מבנה המשחק הראשי
+  ═══════════════════════════════════════════ -->
+  <main id="game-wrapper">
+
+    <!-- 70% עליון: תצוגת החדר -->
+<section id="room-view">
+  <div id="room-bg"></div>
+  <div id="baby-meter-container" style="display:none">...</div>
+  <div id="act-fade-overlay">...</div>
+</section>
+
+<!-- מחקי את כל הבלוק הזה — מ-sprite-crib עד sprite-dishes -->
+<div id="sprite-crib"      class="item-sprite" ...></div>
+<div id="sprite-dresser"   class="item-sprite" ...></div>
+<div id="sprite-stroller"  class="item-sprite" ...></div>
+<div id="sprite-carseat"   class="item-sprite" ...></div>
+<div id="sprite-clothes"   class="item-sprite" ...></div>
+<div id="sprite-laundry"   class="item-sprite noisy-sprite" ...></div>
+<div id="sprite-keys"      class="item-sprite noisy-sprite" ...></div>
+<div id="sprite-dishes"    class="item-sprite noisy-sprite" ...></div>
+      <!-- מד ערות תינוקת — מחזה ב׳ -->
+      <div id="baby-meter-container" style="display:none">
+        <label>מד ערות תינוקת</label>
+        <div id="baby-meter-bar"><div id="baby-meter-fill"></div></div>
+      </div>
+
+      <!-- שכבת מעבר בין מחזות -->
+      <div id="act-fade-overlay">
+        <p id="act-fade-text">שבועיים מאוחר יותר…</p>
+      </div>
+    </section>
+
+    <!-- 30% תחתון: אזור דיאלוג ואינטראקציה -->
+    <section id="dialogue-area">
+      <div id="narration-box">
+        <p id="narration-text">טוען…</p>
+      </div>
+      <div id="choice-buttons">
+        <!-- כפתורים מוזרקים על ידי game.js -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ═══════════════════════════════════════════
+       שכבת סמארטפון (ווטסאפ / שיחות)
+  ═══════════════════════════════════════════ -->
+  <div id="phone-overlay" class="hidden">
+    <div id="phone-frame">
+      <div id="phone-status-bar">
+        <span id="phone-app-name">WhatsApp</span>
+        <button id="phone-close-btn" aria-label="סגור טלפון">✕</button>
+      </div>
+      <div id="phone-content">
+        <!-- מוזרק על ידי game.js בכל מצב -->
+      </div>
+      <div id="phone-input-area" class="hidden">
+        <input type="text" id="phone-text-input" placeholder="כתבי הודעה…" autocomplete="off" />
+        <button id="phone-send-btn">שלחי</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       באנר שיחה נכנסת
+  ═══════════════════════════════════════════ -->
+  <div id="call-banner" class="hidden">
+    <div id="call-info">
+      <span id="call-name">אוריאל 📞</span>
+      <span id="call-sub">מתקשר מהבסיס…</span>
+    </div>
+    <div id="call-actions">
+      <button id="call-answer-btn" class="btn-green">answer</button>
+      <button id="call-ignore-btn" class="btn-red">ignore</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       סקריפטים
+  ═══════════════════════════════════════════ -->
+  <script src="groq.js"></script>
+  <script src="room.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
