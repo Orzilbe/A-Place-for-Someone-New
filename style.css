@@ -1,0 +1,496 @@
+/* ─── Palette ──────────────────────────────────────────── */
+:root {
+  --cream:      #fdf6f0;
+  --rose:       #e8b4b8;
+  --rose-dark:  #c98a8e;
+  --sage:       #c4d4c0;
+  --sage-dark:  #8aab84;
+  --sand:       #f0dfc0;
+  --sand-dark:  #c8a86a;
+  --charcoal:   #3d2b2b;
+  --muted:      #8a7070;
+  --white:      #ffffff;
+  --overlay-bg: rgba(0,0,0,0.55);
+}
+
+/* ─── Reset & Base ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  /* Hebrew-optimized font stack */
+  font-family: 'Assistant', 'Segoe UI', Arial, sans-serif;
+  background: var(--cream);
+  color: var(--charcoal);
+  overflow: hidden;
+  /* RTL is set via dir="rtl" on <html> */
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+  border: none;
+  border-radius: 8px;
+  transition: filter 0.15s, transform 0.1s;
+}
+button:hover  { filter: brightness(1.08); }
+button:active { transform: scale(0.97); }
+
+.hidden { display: none !important; }
+
+/* ─── HUD ──────────────────────────────────────────────── */
+#hud {
+  display: flex;
+  align-items: center;
+  gap: 1.8rem;
+  padding: 0.55rem 1.4rem;
+  background: var(--sand);
+  border-bottom: 2px solid var(--sand-dark);
+  font-size: 0.88rem;
+  letter-spacing: 0.01em;
+  flex-shrink: 0;
+}
+
+#hud strong { color: var(--charcoal); }
+#hud-budget strong { color: #4a7c59; }
+#hud-sanity strong { color: var(--rose-dark); }
+#hud-items  strong { color: #6b5b95; }
+
+/* In RTL flex, margin-inline-start: auto pushes the act label to the LEFT end */
+.act-label {
+  margin-inline-start: auto;
+  font-style: italic;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+/* ─── Game Wrapper ─────────────────────────────────────── */
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+#game-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ─── Room View ────────────────────────────────────────── */
+#room-view {
+  position: relative;
+  overflow: hidden;
+  background: var(--cream);
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 70vh;
+  flex-shrink: 0;
+}
+
+#room-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 80%, #e8d5c4 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 90%, #d4e4d0 0%, transparent 50%),
+    linear-gradient(160deg, #fdf6f0 0%, #f3e8dc 60%, #e8dfd0 100%);
+}
+
+#room-bg::after {
+  content: '';
+  position: absolute;
+  bottom: 8%;
+  left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--sand-dark) 20%, var(--sand-dark) 80%, transparent);
+  opacity: 0.4;
+}
+
+/* ─── Item Sprites ─────────────────────────────────────── */
+.item-sprite {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  font-size: 2.6rem;
+  line-height: 1;
+  filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.18));
+  transition: opacity 0.4s, transform 0.4s;
+}
+
+.item-sprite.visible {
+  display: flex;
+  animation: pop-in 0.35s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+.item-sprite.noisy-sprite { cursor: default; opacity: 0.85; }
+
+#sprite-crib::after     { content: '🛏️'; }
+#sprite-dresser::after  { content: '🗄️'; }
+#sprite-stroller::after { content: '🛒'; }
+#sprite-carseat::after  { content: '💺'; }
+#sprite-clothes::after  { content: '👕'; }
+#sprite-laundry::after  { content: '🧺'; }
+#sprite-keys::after     { content: '🔑'; }
+#sprite-dishes::after   { content: '🍽️'; }
+
+.box-sprite::after { content: '📦'; }
+.box-sprite { width:70px; height:70px; font-size:2.2rem; cursor:pointer; }
+.box-sprite:hover { filter: brightness(1.15) drop-shadow(2px 4px 8px rgba(0,0,0,0.25)); }
+
+@keyframes pop-in {
+  from { opacity:0; transform: scale(0.6) translateY(20px); }
+  to   { opacity:1; transform: scale(1)   translateY(0); }
+}
+
+/* ─── Baby Wake Meter ──────────────────────────────────── */
+#baby-meter-container {
+  position: absolute;
+  top: 10px;
+  /* In RTL, place on the LEFT (inline-end) side */
+  left: 14px;
+  right: auto;
+  width: 180px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#baby-meter-bar {
+  width: 100%;
+  height: 10px;
+  background: #e0d0c8;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+#baby-meter-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--sage-dark), var(--rose-dark));
+  border-radius: 6px;
+  transition: width 0.3s, background-color 0.3s;
+}
+
+#baby-meter-fill.danger { background: linear-gradient(90deg, #e07070, #c03030); }
+
+/* ─── Act Fade Overlay ─────────────────────────────────── */
+#act-fade-overlay {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1.8s ease;
+  z-index: 50;
+}
+
+#act-fade-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+#act-fade-text {
+  color: var(--cream);
+  font-size: 2rem;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* ─── Dialogue Area ────────────────────────────────────── */
+#dialogue-area {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--white);
+  border-top: 2px solid var(--rose);
+  padding: 0.9rem 1.4rem;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+#narration-box {
+  flex: 1;
+  overflow-y: auto;
+}
+
+#narration-text {
+  font-size: 0.95rem;
+  line-height: 1.75;
+  color: var(--charcoal);
+  text-align: right;
+}
+
+#choice-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  /* In RTL, wrap flows right-to-left naturally */
+  justify-content: flex-end;
+}
+
+#choice-buttons button {
+  padding: 0.45rem 1.1rem;
+  font-size: 0.85rem;
+  background: var(--sand);
+  color: var(--charcoal);
+  border: 1.5px solid var(--sand-dark);
+}
+
+#choice-buttons button:hover { background: var(--rose); border-color: var(--rose-dark); }
+#choice-buttons button.primary { background: var(--sage); border-color: var(--sage-dark); font-weight: 700; }
+
+/* ─── Smartphone Overlay ───────────────────────────────── */
+#phone-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fade-in 0.25s ease;
+}
+
+@keyframes fade-in { from { opacity:0; } to { opacity:1; } }
+
+#phone-frame {
+  width: min(360px, 90vw);
+  height: min(560px, 85vh);
+  background: #f0f0f0;
+  border-radius: 28px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* Phone frame uses its own RTL direction */
+  direction: rtl;
+}
+
+#phone-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1rem 0.5rem;
+  background: #25d366;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+#phone-status-bar.call-mode { background: #3a3a3a; }
+
+#phone-close-btn {
+  background: transparent;
+  color: #fff;
+  font-size: 1rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 50%;
+}
+#phone-close-btn:hover { background: rgba(255,255,255,0.2); filter: none; }
+
+#phone-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem;
+  background: #ece5dd;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* ─── WhatsApp Chat Bubbles (RTL) ──────────────────────── */
+.wa-bubble {
+  max-width: 80%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  position: relative;
+  word-break: break-word;
+  text-align: right;
+}
+
+/*
+ * In RTL flex column:
+ *   flex-end  = inline-end = LEFT side  → incoming messages (from others)
+ *   flex-start= inline-start= RIGHT side → outgoing messages (from player)
+ */
+.wa-bubble.incoming {
+  background: #fff;
+  align-self: flex-end;       /* LEFT side in RTL */
+  border-top-right-radius: 2px;
+}
+
+.wa-bubble.outgoing {
+  background: #dcf8c6;
+  align-self: flex-start;     /* RIGHT side in RTL */
+  border-top-left-radius: 2px;
+}
+
+.wa-bubble .wa-sender {
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: var(--sage-dark);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.wa-bubble.giveaway {
+  border: 2px solid var(--rose-dark);
+  animation: pulse-glow 1.2s ease-in-out infinite;
+  cursor: pointer;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232,180,184,0.6); }
+  50%       { box-shadow: 0 0 0 6px rgba(232,180,184,0); }
+}
+
+.wa-time {
+  font-size: 0.68rem;
+  color: #888;
+  text-align: left;   /* time always on the logical left of the bubble */
+  margin-top: 2px;
+}
+
+/* Ronit negotiation chat — same alignment logic as above */
+.chat-bubble-ronit {
+  background: #fff;
+  align-self: flex-end;       /* LEFT in RTL (incoming) */
+  border-top-right-radius: 2px;
+}
+
+.chat-bubble-player {
+  background: #dcf8c6;
+  align-self: flex-start;     /* RIGHT in RTL (outgoing) */
+  border-top-left-radius: 2px;
+}
+
+/* Typing indicator */
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+  padding: 0.5rem 0.75rem;
+  background: #fff;
+  border-radius: 10px;
+  width: fit-content;
+  align-self: flex-end;       /* LEFT in RTL (Ronit typing) */
+}
+.typing-indicator span {
+  width: 7px; height: 7px;
+  background: #aaa;
+  border-radius: 50%;
+  animation: bounce 1.2s infinite;
+}
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes bounce {
+  0%,80%,100% { transform: translateY(0); }
+  40%         { transform: translateY(-6px); }
+}
+
+/* ─── Phone Input Area ─────────────────────────────────── */
+#phone-input-area {
+  display: flex;
+  padding: 0.55rem 0.75rem;
+  gap: 0.5rem;
+  background: #f0f0f0;
+  border-top: 1px solid #ddd;
+  /* In RTL: send button on the LEFT, input on the RIGHT */
+}
+
+#phone-text-input {
+  flex: 1;
+  padding: 0.45rem 0.75rem;
+  border-radius: 20px;
+  border: 1px solid #ccc;
+  font-size: 0.85rem;
+  font-family: inherit;
+  outline: none;
+  direction: rtl;
+  text-align: right;
+}
+#phone-text-input:focus { border-color: var(--sage-dark); }
+
+#phone-send-btn {
+  padding: 0.45rem 0.9rem;
+  background: #25d366;
+  color: #fff;
+  font-size: 0.85rem;
+  border-radius: 20px;
+  font-weight: 600;
+}
+
+/* ─── Incoming Call Banner ─────────────────────────────── */
+#call-banner {
+  position: fixed;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(30,30,30,0.92);
+  color: #fff;
+  border-radius: 16px;
+  padding: 0.75rem 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  z-index: 200;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  animation: slide-down 0.3s cubic-bezier(0.34,1.4,0.64,1) both;
+  min-width: 280px;
+  direction: rtl;
+}
+
+@keyframes slide-down {
+  from { opacity:0; transform: translateX(-50%) translateY(-20px); }
+  to   { opacity:1; transform: translateX(-50%) translateY(0); }
+}
+
+#call-info { display: flex; flex-direction: column; gap: 2px; text-align: right; }
+#call-name  { font-weight: 700; font-size: 1rem; }
+#call-sub   { font-size: 0.78rem; color: #bbb; font-style: italic; }
+
+/* In RTL flex, margin-left: auto pushes buttons to the LEFT end */
+#call-actions { display: flex; gap: 0.6rem; margin-left: auto; }
+
+.btn-green { background: #25d366; color: #fff; padding: 0.4rem 0.9rem; font-size: 0.85rem; font-weight: 600; }
+.btn-red   { background: #e05555; color: #fff; padding: 0.4rem 0.9rem; font-size: 0.85rem; font-weight: 600; }
+
+/* ─── Toast Notification ───────────────────────────────── */
+#toast {
+  position: fixed;
+  bottom: calc(30% + 14px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--charcoal);
+  color: var(--cream);
+  padding: 0.5rem 1.2rem;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 300;
+  white-space: nowrap;
+  direction: rtl;
+}
+#toast.show { opacity: 1; }
+
+/* ─── Scrollbar polish ─────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--rose); border-radius: 4px; }
