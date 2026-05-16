@@ -10,61 +10,172 @@
 </head>
 <body>
 
-  <!-- ═══════════════════════════════════════════
-       סרגל הסטטיסטיקות
-  ═══════════════════════════════════════════ -->
-  <header id="hud">
-    <span id="hud-budget">תקציב: <strong>5,000 ₪</strong></span>
-    <span id="hud-sanity">שפיות: <strong>100%</strong></span>
-    <span id="hud-items">פריטים: <strong>0 / 5</strong></span>
-    <span id="hud-act" class="act-label">נסטינג</span>
-  </header>
+  <div id="app-layout">
 
-  <!-- ═══════════════════════════════════════════
-       מבנה המשחק הראשי
-  ═══════════════════════════════════════════ -->
-  <main id="game-wrapper">
+    <!-- ═══ אזור המשחק הראשי ═══ -->
+    <div id="game-wrapper">
 
-    <!-- 70% עליון: תצוגת החדר -->
-    <section id="room-view">
-      <div id="room-bg"></div>
+      <!-- 70%: תצוגת החדר -->
+      <section id="room-view">
+        <div id="room-bg"></div>
 
-      <!-- מד ערות תינוקת — מחזה ב׳ -->
-      <div id="baby-meter-container" style="display:none">
-        <label>מד ערות תינוקת</label>
-        <div id="baby-meter-bar"><div id="baby-meter-fill"></div></div>
+        <!-- מד ערות תינוקת — מחזה ב׳ -->
+        <div id="baby-meter-container" style="display:none">
+          <label>מד ערות תינוקת</label>
+          <div id="baby-meter-bar"><div id="baby-meter-fill"></div></div>
+        </div>
+
+        <!-- שכבת מעבר בין מחזות -->
+        <div id="act-fade-overlay">
+          <p id="act-fade-text">שבועיים מאוחר יותר…</p>
+        </div>
+      </section>
+
+      <!-- 30%: אזור דיאלוג ואינטראקציה -->
+      <section id="dialogue-area">
+        <div id="narration-box">
+          <p id="narration-text">טוען…</p>
+        </div>
+        <div id="choice-buttons"></div>
+      </section>
+
+    </div><!-- /game-wrapper -->
+
+    <!-- ═══ לוח צד ═══ -->
+    <aside id="side-panel">
+
+      <div id="panel-title">מקום למישהי חדשה</div>
+
+      <!-- תקציב -->
+      <div class="panel-stat">
+        <div class="stat-label">תקציב</div>
+        <div id="panel-budget-display">
+          <span id="panel-wallet">👜</span>
+          <span id="hud-budget-val" class="stat-big">4,000 ₪</span>
+        </div>
       </div>
 
-      <!-- שכבת מעבר בין מחזות -->
-      <div id="act-fade-overlay">
-        <p id="act-fade-text">שבועיים מאוחר יותר…</p>
+      <!-- שפיות -->
+      <div class="panel-stat">
+        <div class="stat-label">שפיות</div>
+        <div id="sanity-hearts"></div>
       </div>
-    </section>
 
-    <!-- 30% תחתון: אזור דיאלוג ואינטראקציה -->
-    <section id="dialogue-area">
-      <div id="narration-box">
-        <p id="narration-text">טוען…</p>
+      <!-- ציוד -->
+      <div class="panel-stat">
+        <div class="stat-label">ציוד</div>
+        <div id="item-icons"></div>
       </div>
-      <div id="choice-buttons">
-        <!-- כפתורים מוזרקים על ידי game.js -->
+
+      <!-- מחזה -->
+      <div class="panel-stat" id="panel-act-section">
+        <div class="stat-label" id="hud-act">מחזה א׳ — הקינון</div>
       </div>
-    </section>
 
-  </main>
+      <div id="panel-phone" class="panel-stat">
+        <div class="stat-label">טלפון</div>
+        <div id="phone-icon-wrapper">
+          <span id="phone-icon">📱</span>
+          <span id="phone-notification-dot" class="hidden"></span>
+        </div>
+      </div>
 
-  <!-- ═══════════════════════════════════════════
-       שכבת סמארטפון (ווטסאפ / שיחות)
-  ═══════════════════════════════════════════ -->
+    </aside>
+
+  </div><!-- /app-layout -->
+
+  <!-- ═══ שכבת סמארטפון ═══ -->
   <div id="phone-overlay" class="hidden">
     <div id="phone-frame">
       <div id="phone-status-bar">
         <span id="phone-app-name">WhatsApp</span>
         <button id="phone-close-btn" aria-label="סגור טלפון">✕</button>
       </div>
-      <div id="phone-content">
-        <!-- מוזרק על ידי game.js בכל מצב -->
+      <div id="phone-home" class="hidden">
+        <div id="phone-home-header">
+          <span id="phone-home-time">09:24</span>
+          <span id="phone-home-title">הודעות</span>
+        </div>
+
+        <div id="contacts-list">
+
+          <div class="contact-row" data-contact="group">
+            <span class="contact-avatar">👶</span>
+            <div class="contact-info">
+              <span class="contact-name">קהילת משוערות ינואר 2026</span>
+              <span class="contact-preview">סיגל: מתנה בחינם 🎁...</span>
+            </div>
+            <span class="contact-badge hidden">2</span>
+          </div>
+
+          <div class="contact-row" data-contact="oriel">
+            <span class="contact-avatar">👨‍✈️</span>
+            <div class="contact-info">
+              <span class="contact-name">אוריאל 💙</span>
+              <span class="contact-preview">מחכה להודעה...</span>
+            </div>
+            <span class="contact-badge hidden"></span>
+          </div>
+
+          <div class="contact-row" data-contact="mom">
+            <span class="contact-avatar">👩</span>
+            <div class="contact-info">
+              <span class="contact-name">אמא</span>
+              <span class="contact-preview"></span>
+            </div>
+            <span class="contact-badge hidden"></span>
+          </div>
+
+          <div class="contact-row" data-contact="dad">
+            <span class="contact-avatar">👨</span>
+            <div class="contact-info">
+              <span class="contact-name">אבא</span>
+              <span class="contact-preview"></span>
+            </div>
+            <span class="contact-badge hidden"></span>
+          </div>
+
+          <div class="contact-row" data-contact="maya">
+            <span class="contact-avatar">🌸</span>
+            <div class="contact-info">
+              <span class="contact-name">מאיה</span>
+              <span class="contact-preview">איך את מרגישה?</span>
+            </div>
+            <span class="contact-badge hidden"></span>
+          </div>
+
+          <div class="contact-row" data-contact="shira">
+            <span class="contact-avatar">😬</span>
+            <div class="contact-info">
+              <span class="contact-name">שירה</span>
+              <span class="contact-preview"></span>
+            </div>
+            <span class="contact-badge hidden"></span>
+          </div>
+
+          <div class="contact-row" data-contact="noa">
+            <span class="contact-avatar">🎀</span>
+            <div class="contact-info">
+              <span class="contact-name">נועה</span>
+              <span class="contact-preview"></span>
+            </div>
+            <span class="contact-badge hidden"></span>
+          </div>
+
+          <div class="contact-row" data-contact="dana">
+            <span class="contact-avatar">😎</span>
+            <div class="contact-info">
+              <span class="contact-name">דנה</span>
+              <span class="contact-preview">אז מתי יוצאות??</span>
+            </div>
+            <span class="contact-badge hidden"></span>
+          </div>
+
+        </div>
       </div>
+
+      <div id="phone-content"></div>
+      <div id="chat-back-btn" class="phone-back hidden">← חזרה</div>
       <div id="phone-input-area" class="hidden">
         <input type="text" id="phone-text-input" placeholder="כתבי הודעה…" autocomplete="off" />
         <button id="phone-send-btn">שלחי</button>
@@ -72,9 +183,7 @@
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════
-       באנר שיחה נכנסת
-  ═══════════════════════════════════════════ -->
+  <!-- ═══ באנר שיחה נכנסת ═══ -->
   <div id="call-banner" class="hidden">
     <div id="call-info">
       <span id="call-name">אוריאל 📞</span>
@@ -86,9 +195,6 @@
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════
-       סקריפטים
-  ═══════════════════════════════════════════ -->
   <script src="groq.js"></script>
   <script src="room.js"></script>
   <script src="game.js"></script>

@@ -18,22 +18,56 @@ class GameItem {
 
 // ── מצב המשחק הגלובלי ───────────────────────────────────────────────────────
 const gameState = {
-  budget:              4000,
-  sanity:              100,
-  superstition:        false,
-  superstitionFate:    null,   // "good" | "neutral" | "bad" — נקבע בסתר בעת הבחירה
-  babyMeterSlowdown:   1.0,    // 0.6 במסלול מזל טוב
-  act:                 1,
-  items:               [],
-  callPending:         false,
-  callTimer:           null,
-  act2Logistics:       0,
-  babyMeter:           0,
-  wakeWindows:         0,
-  stealthActive:       false,
-  negotiating:         false,
-  roniConvoHistory:    [],
-  itemPositions:       {},
+  budget:               4000,
+  sanity:               100,
+  superstition:         false,
+  superstitionFate:     null,   // "good" | "neutral" | "bad" — נקבע בסתר בעת הבחירה
+  babyMeterSlowdown:    1.0,    // 0.6 במסלול מזל טוב
+  act:                  1,
+  items:                [],
+  callPending:          false,
+  callTimer:            null,
+  sleepCycle:           0,
+  totalCycles:          4,
+  lullabyPhase:         false,
+  babyCried:            false,
+  stealthListenerAdded: false,
+  babyMeter:            0,
+  stealthActive:        false,
+  negotiating:          false,
+  roniConvoHistory:     [],
+  itemPositions:        {},
+};
+
+// ── מצב טלפון ───────────────────────────────────────────────────────────────
+const phoneState = {
+  notifications: 0,
+};
+let _groupActive = false;
+let _groupVisitCount = 0;
+
+// ── נתוני איש קשר ───────────────────────────────────────────────────────────
+const chatHistories = {
+  oriel: [], mom: [], dad: [], maya: [], shira: [], noa: [], dana: [],
+};
+
+const CONTACT_PROMPTS = {
+  oriel: () => ORIEL_WHATSAPP_PROMPT,
+  mom:   () => MOM_WHATSAPP_PROMPT,
+ // maya:  () => MAYA_PROMPT,
+ // shira: () => SHIRA_PROMPT,
+ // noa:   () => NOA_PROMPT,
+ // dana:  () => DANA_PROMPT,
+};
+
+const CONTACT_NAMES = {
+  oriel: "אוריאל ❤️",
+  mom:   "אמא",
+  dad:   "אבא",
+ // maya:  "מאיה 🌸",
+  //shira: "שירה",
+  //noa:   "נועה 🎀",
+  //dana:  "דנה 😎",
 };
 
 const ITEMS_DATA = [
@@ -47,9 +81,6 @@ const ITEMS_DATA = [
 // ── רפרנסים ל-DOM ────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 
-const hudBudget      = $("hud-budget");
-const hudSanity      = $("hud-sanity");
-const hudItems       = $("hud-items");
 const hudAct         = $("hud-act");
 const narrationText  = $("narration-text");
 const choiceButtons  = $("choice-buttons");
@@ -66,32 +97,106 @@ const actFadeText    = $("act-fade-text");
 const babyMeterCont  = $("baby-meter-container");
 const babyMeterFill  = $("baby-meter-fill");
 
-// ── עדכון סרגל הסטטיסטיקות ─────────────────────────────────────────────────
+// ── עדכון לוח הצד ────────────────────────────────────────────────────────────
 function updateHUD() {
-  hudBudget.innerHTML = `תקציב: <strong>${gameState.budget.toLocaleString("he-IL")} ₪</strong>`;
-  hudSanity.innerHTML = `שפיות: <strong>${gameState.sanity}%</strong>`;
-  const secured = gameState.items.filter(i => i.isSecured).length;
-  hudItems.innerHTML  = `פריטים: <strong>${secured} / 5</strong>`;
+  const budgetVal = document.getElementById("hud-budget-val");
+  if (budgetVal) budgetVal.textContent = gameState.budget.toLocaleString("he-IL") + " ₪";
+
+  const heartsEl = document.getElementById("sanity-hearts");
+  if (heartsEl) {
+    heartsEl.innerHTML = "";
+    const filled = Math.round(gameState.sanity / 10);
+    for (let i = 0; i < 10; i++) {
+      const span = document.createElement("span");
+      if (i < filled) {
+        span.textContent = "🩷";
+      } else {
+        span.textContent = "🤍";
+        span.classList.add("empty");
+        span.style.opacity = "0.35";
+      }
+      heartsEl.appendChild(span);
+    }
+    if (gameState.sanity < 40) {
+      heartsEl.classList.add("danger");
+    } else {
+      heartsEl.classList.remove("danger");
+    }
+    const oldPct = heartsEl.parentElement.querySelector(".sanity-pct");
+    if (oldPct) oldPct.remove();
+    const pct = document.createElement("div");
+    pct.classList.add("sanity-pct");
+    pct.style.cssText = "font-size:0.7rem;color:var(--muted);margin-top:2px;";
+    pct.textContent = gameState.sanity + "%";
+    heartsEl.parentElement.appendChild(pct);
+  }
+
+  const itemsEl = document.getElementById("item-icons");
+  if (itemsEl) {
+    itemsEl.innerHTML = "";
+    const thumbs = {
+      crib:     "assets/NewCrib.png",
+      dresser:  "assets/NewDresser.png",
+      stroller: "assets/NewStroller.png",
+      carseat:  "assets/NewCarseat.png",
+      clothes:  "assets/NewBabyClothes.png",
+    };
+    gameState.items.forEach(item => {
+      const row = document.createElement("div");
+      row.className = "item-thumb" + (item.isSecured ? " secured" : "");
+      const img = document.createElement("img");
+      img.src = thumbs[item.id] || "";
+      img.alt = item.name;
+      const label = document.createElement("span");
+      label.textContent = item.name;
+      row.appendChild(img);
+      row.appendChild(label);
+      itemsEl.appendChild(row);
+    });
+  }
 }
 
 // ── עדכוני תקציב / שפיות ────────────────────────────────────────────────────
 function spendBudget(amount) {
   gameState.budget = Math.max(0, gameState.budget - amount);
   updateHUD();
+  const budgetEl = document.getElementById("hud-budget-val");
+  if (budgetEl) {
+    budgetEl.classList.remove("pulse-red");
+    void budgetEl.offsetWidth;
+    budgetEl.classList.add("pulse-red");
+    setTimeout(() => budgetEl.classList.remove("pulse-red"), 600);
+  }
   if (gameState.budget === 0) {
     narrate("נגמר הכסף. החדר ישאר ריק קצת יותר.");
   }
 }
 
+function updateSanityFilter() {
+  const wrapper = document.getElementById("game-wrapper");
+  wrapper.classList.remove("sanity-low", "sanity-critical");
+  if (gameState.sanity < 40) wrapper.classList.add("sanity-low");
+  if (gameState.sanity < 20) wrapper.classList.add("sanity-critical");
+}
+
 function drainSanity(amount) {
   gameState.sanity = Math.max(0, gameState.sanity - amount);
   updateHUD();
+  updateSanityFilter();
+  const heartsEl = document.getElementById("sanity-hearts");
+  if (heartsEl) {
+    heartsEl.classList.remove("pulse-red");
+    void heartsEl.offsetWidth;
+    heartsEl.classList.add("pulse-red");
+    setTimeout(() => heartsEl.classList.remove("pulse-red"), 600);
+  }
   if (gameState.sanity <= 0) triggerBadEnding();
 }
 
 function restoreSanity(amount) {
   gameState.sanity = Math.min(100, gameState.sanity + amount);
   updateHUD();
+  updateSanityFilter();
 }
 
 // ── הגרלת גורל האמונות הטפלות ────────────────────────────────────────────────
@@ -181,7 +286,14 @@ function setChoices(choices) {
     const btn = document.createElement("button");
     btn.textContent = label;
     if (primary) btn.classList.add("primary");
-    btn.addEventListener("click", action);
+    btn.addEventListener("click", () => {
+      choiceButtons.querySelectorAll("button").forEach(b => {
+        b.disabled = true;
+        b.style.opacity = "0.5";
+        b.style.cursor = "not-allowed";
+      });
+      action();
+    });
     choiceButtons.appendChild(btn);
   });
 }
@@ -243,17 +355,13 @@ function showItemMenu(item) {
     }
   ];
 
-  if (item.allowWhatsapp) {
-    choices.push({
-      label: "קבוצת ווטסאפ — חינם (מצאי את ההודעה של סיגל!)",
-      primary: true,
-      action: () => openWhatsAppGroup(item)
-    });
-  }
-
   choices.push({ label: "← חזרה", action: showMainItemList });
 
-  narrate(`<strong>${item.emoji} ${item.name}</strong><br><em>חדש עולה ${item.costNew.toLocaleString()} ₪. איך תטפלי בזה?</em>`);
+  if (item.id === "clothes") {
+    narrate(`<strong>${item.emoji} ${item.name}</strong><br><em>חדש עולה ${item.costNew.toLocaleString()} ₪. איך תטפלי בזה?</em><br><small style="color:var(--muted);font-size:0.78rem;">💬 אולי שווה לבדוק את הטלפון — לפעמים אמהות מחלקות דברים בקבוצות...</small>`);
+  } else {
+    narrate(`<strong>${item.emoji} ${item.name}</strong><br><em>חדש עולה ${item.costNew.toLocaleString()} ₪. איך תטפלי בזה?</em>`);
+  }
   setChoices(choices);
 }
 
@@ -283,7 +391,7 @@ function startOpeningScene() {
   `);
   setChoices([
     {
-      label: "כן — אשאיר הכל בחוץ עד שהתינוקת תגיע.",
+      label: "כן - אשאיר הכל בחוץ עד שהתינוקת תגיע.",
       action: () => {
         gameState.superstition = true;
         rollSuperstitionFate(); // הגרלה סמויה
@@ -295,7 +403,7 @@ function startOpeningScene() {
       }
     },
     {
-      label: "לא — אני מסדרת את החדר עכשיו.",
+      label: "לא - אני מסדרת את החדר עכשיו.",
       action: () => {
         gameState.superstition = false;
         drainSanity(5);
@@ -312,6 +420,9 @@ function startOpeningScene() {
 function beginAct1() {
   gameState.act = 1;
   hudAct.textContent = "מחזה א׳ — הקינון";
+  setTimeout(() => {
+    addPhoneNotification("group", 2);
+  }, 25000);
 
   if (gameState.superstition) {
     narrate(`פתחת את רשימת הקניות. חמישה פריטים. הציוד יחכה בחוץ עד הלידה — אבל הכסף עדיין צריך לזוז.`);
@@ -335,6 +446,11 @@ function scheduleMotherSupportCall() {
   setTimeout(() => {
     if (gameState.act !== 1 || gameState.negotiating) return;
 
+    const homeEl = document.getElementById("phone-home");
+    if (homeEl) homeEl.classList.add("hidden");
+    phoneContent.classList.remove("hidden");
+    phoneInputArea.classList.add("hidden");
+
     phoneAppName.textContent = "📞 אמא";
     $("phone-status-bar").classList.add("call-mode");
     $("phone-status-bar").style.background = "#3a3a3a";
@@ -342,7 +458,7 @@ function scheduleMotherSupportCall() {
     const lines = [
       "\"עשית את הדבר הנכון. אני גאה בך. תשמרי על עצמך.\"",
       "\"כשנולדת, גם אני חיכיתי. זה מה שעושים. את לא לבד.\"",
-      "\"הכל יהיה בסדר. תסמכי עלי — ותסמכי על עצמך.\""
+      "\"הכל יהיה בסדר. תסמכי עלי - ותסמכי על עצמך.\""
     ];
     const line = lines[Math.floor(Math.random() * lines.length)];
 
@@ -350,7 +466,6 @@ function scheduleMotherSupportCall() {
       <div class="wa-bubble incoming" style="font-style:italic;margin-top:auto;">${line}</div>
       <div class="wa-bubble incoming" style="font-size:0.78rem;color:#888;">הקו חמים. היא ממתינה.</div>
     `;
-    phoneInputArea.classList.add("hidden");
     phoneOverlay.classList.remove("hidden");
 
     phoneCloseBtn.onclick = () => {
@@ -377,7 +492,7 @@ function scheduleHusbandCall() {
         callBanner.classList.add("hidden");
         $("call-answer-btn").style.display = "";
         drainSanity(3);
-        showToast("השיחה של אוריאל נפלה לתא קולי. −3 שפיות 💙");
+        showToast("השיחה של אוריאל עברה לתא קולי. −3 שפיות 💙");
       }, 3500);
     } else {
       showCallBanner();
@@ -387,8 +502,38 @@ function scheduleHusbandCall() {
 
 function showCallBanner() {
   gameState.callPending = true;
-  callBanner.classList.remove("hidden");
 
+  if (!phoneOverlay.classList.contains("hidden")) {
+    const homeEl = document.getElementById("phone-home");
+    if (homeEl) homeEl.classList.add("hidden");
+    phoneContent.classList.remove("hidden");
+    phoneInputArea.classList.add("hidden");
+
+    phoneAppName.textContent = "אוריאל 📞";
+    $("phone-status-bar").style.background = "#3a3a3a";
+    phoneContent.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;
+                  justify-content:center;flex:1;gap:1.5rem;padding:2rem;
+                  text-align:center;color:var(--charcoal);">
+        <div style="font-size:3rem;">👨‍✈️</div>
+        <div style="font-size:1.1rem;font-weight:700;">אוריאל מתקשר...</div>
+        <div style="font-size:0.8rem;color:var(--muted);">מהבסיס</div>
+        <div style="display:flex;gap:1rem;margin-top:1rem;">
+          <button onclick="answerCallInPhone()"
+            style="background:#25d366;color:white;padding:0.6rem 1.4rem;
+                   border-radius:50px;border:none;font-size:0.9rem;
+                   font-weight:700;cursor:pointer;">ענה</button>
+          <button onclick="ignoreCallInPhone()"
+            style="background:#e05555;color:white;padding:0.6rem 1.4rem;
+                   border-radius:50px;border:none;font-size:0.9rem;
+                   font-weight:700;cursor:pointer;">התעלמי</button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  callBanner.classList.remove("hidden");
   $("call-answer-btn").onclick = () => {
     callBanner.classList.add("hidden");
     gameState.callPending = false;
@@ -404,7 +549,28 @@ function showCallBanner() {
   };
 }
 
+function answerCallInPhone() {
+  callBanner.classList.add("hidden");
+  gameState.callPending = false;
+  openPhoneCall();
+  scheduleHusbandCall();
+}
+
+function ignoreCallInPhone() {
+  callBanner.classList.add("hidden");
+  gameState.callPending = false;
+  drainSanity(3);
+  showToast("נתת לו לצלצל. −3 שפיות 💙");
+  scheduleHusbandCall();
+  openPhoneHome();
+}
+
 function openPhoneCall() {
+  const homeEl = document.getElementById("phone-home");
+  if (homeEl) homeEl.classList.add("hidden");
+  phoneContent.classList.remove("hidden");
+  phoneInputArea.classList.add("hidden");
+
   const lines = [
     "\"מאמי, מה שלומך? הכל בסדר?\"",
     "\"כמה שהייתי רוצה להיות שם. תגידי לי מה את צריכה.\"",
@@ -420,7 +586,6 @@ function openPhoneCall() {
     <div class="wa-bubble incoming" style="font-style:italic;margin-top:auto;">${line}</div>
     <div class="wa-bubble incoming" style="font-size:0.78rem;color:#888;">הקו רועש, ואז שקט.</div>
   `;
-  phoneInputArea.classList.add("hidden");
   phoneOverlay.classList.remove("hidden");
 
   phoneCloseBtn.onclick = () => {
@@ -434,24 +599,42 @@ function openPhoneCall() {
 
 // ── מיני-משחק קבוצת ווטסאפ ──────────────────────────────────────────────────
 function openWhatsAppGroup(item) {
-  phoneAppName.textContent = "👶 קבוצת אמהות";
+  if (!item) item = gameState.items.find(i => i.id === "clothes");
+  _groupActive = true;
+  _groupVisitCount++;
+  phoneAppName.textContent = "קהילת משוערות ינואר 2026";
   $("phone-status-bar").style.background = "#25d366";
   phoneContent.innerHTML = "";
+  phoneContent.classList.remove("hidden");
   phoneInputArea.classList.add("hidden");
   phoneOverlay.classList.remove("hidden");
 
-  const fakeMessages = [
-    { sender: "מיכל כ.",       text: "מישהי ניסתה את בית המרקחת החדש ברחוב הרצל? ליד תחנת האוטובוס?", time: "09:12" },
-    { sender: "נועה ט.",        text: "תזכורת: אסיפת בניין יום חמישי 20:00 בנושא החניות 🚗", time: "09:15" },
-    { sender: "יעל ר.",         text: "מישהי מכירה יועצת הנקה טובה באזור? שלי פרשה 😭", time: "09:18" },
-    { sender: "מנהלת 📌",       text: "תזכורת: אין פרסומות בקבוצה. למודעות יש את קבוצת האחות.", time: "09:19" },
-    { sender: "רונית ל.",       text: "הבת שלי מוכרת עגלה ישנה, כמעט חדשה, שלחי הודעה 👇", time: "09:22", ronitL: true },
-    { sender: "סיגל (4ב) 🌸",  text: "מתנה בחינם 🎁 בגדי תינוקת 0-3 חודשים, בקושי בשימוש, הכל כבוס. הראשונה שמגיבה מקבלת! כתבי למטה!", time: "09:25", giveaway: true },
-    { sender: "מיכל כ.",       text: "וואו סיגל כמה שזה נחמד ממך!", time: "09:26" },
-    { sender: "דינה מ.",        text: "מישהי ראתה חתול אפור מפוספס ליד בניין 7? הוא ברח אתמול בלילה 🐱", time: "09:28" },
-    { sender: "נועה ט.",        text: "בנוגע לחתול — בדקתי בחניון, הוא לא שם", time: "09:29" },
-    { sender: "רבקה ח.",        text: "בוקר טוב לכולן! יום יפה ☀️", time: "09:31" },
-  ];
+  let fakeMessages;
+  if (_groupVisitCount === 1) {
+    fakeMessages = [
+      { sender: "מיכל כ.",      text: "מישהי ניסתה את בית המרקחת החדש ברחוב הרצל?", time: "09:12" },
+      { sender: "נועה ט.",       text: "יש למישהי המלצה על צידנית טובה?", time: "09:15" },
+      { sender: "יעל ר.",        text: "מישהי מכירה יועצת הנקה טובה? חייבת עזרה דחוף 😭", time: "09:18" },
+      { sender: "מנהלת 📌",      text: "תזכורת: אין פרסומות בקבוצה.", time: "09:19" },
+      { sender: "סיגל ג.",       text: "מתנה בחינם 🎁 בגדי תינוקת 0-3 חודשים, בקושי בשימוש! הראשונה שמגיבה מקבלת!", time: "09:25", giveaway: true },
+      { sender: "מיכל כ.",      text: "וואו סיגל כמה שזה נחמד ממך!", time: "09:26" },
+      { sender: "אפרת מ.",       text: "יש פה מישהי שהעמסת סוכר יצא גבוה?", time: "09:28" },
+      { sender: "נועה ט.",       text: "עוד מישהי חווה לחצים באמצע הגב?", time: "09:29" },
+      { sender: "רבקה ח.",       text: "בוקר טוב לכולן! ☀️", time: "09:31" },
+    ];
+  } else {
+    const stroller = gameState.items.find(i => i.id === "stroller");
+    const showRonitL = !stroller || !stroller.isSecured;
+    fakeMessages = [
+      { sender: "רבקה ח.",       text: "מישהי יודעת מה עושים כשהתינוק לא מרפה מהשד? 😅", time: "10:02" },
+      { sender: "מיכל כ.",      text: "נורמלי לישון שעה וחצי סך הכל בלילה הראשון?? 😭", time: "10:15" },
+      { sender: "יעל ר.",        text: "שלחתי הודעה ליועצת ההנקה, מחכה לחזרה. תודה לכולן ❤️", time: "10:18" },
+      ...(showRonitL ? [{ sender: "הדר 🛒", text: "היי לכולן, הבת שלי מוכרת עגלת תינוק במצב מעולה. כמעט לא השתמשנו. 700 שקל. מי שמעוניינת 👇", time: "10:22", ronitL: true }] : []),
+      { sender: "דינה מ.",       text: "מישהי קנתה את הסבון של Johnson's החדש? טוב?", time: "10:28" },
+      { sender: "נועה ט.",       text: "אני ממליצה על Mustela, הרגיש לי יותר עדין 🌸", time: "10:31" },
+      { sender: "מנהלת 📌",      text: "תזכורת: מפגש זום ראשון שלנו יום ראשון ב-20:00! 🎉", time: "10:45" },
+    ];
+  }
 
   let revealIndex = 0;
   let giveawayClickable = false;
@@ -460,6 +643,7 @@ function openWhatsAppGroup(item) {
   let missTimer;
 
   function addBubble(msg) {
+    if (!_groupActive) return document.createElement("div");
     const div = document.createElement("div");
     div.className = "wa-bubble incoming" + (msg.giveaway ? " giveaway" : "");
     div.innerHTML = `
@@ -471,10 +655,13 @@ function openWhatsAppGroup(item) {
       div.style.cursor = "pointer";
       div.style.borderBottom = "2px solid #8aab84";
       div.addEventListener("click", () => {
-        clearInterval(scrollInterval);
+        const stroller = gameState.items.find(i => i.id === "stroller");
+        if (stroller && stroller.isSecured) return;
+        _groupActive = false;
+        clearTimeout(scrollInterval);
         clearTimeout(missTimer);
         closePhone();
-        openRonitLNegotiation();
+        openHadarNegotiation();
       });
     }
     if (msg.giveaway) {
@@ -482,12 +669,18 @@ function openWhatsAppGroup(item) {
       giveawayClickable = true;
       div.addEventListener("click", () => {
         if (!giveawayClickable) return;
-        clearInterval(scrollInterval);
+        _groupActive = false;
+        clearTimeout(scrollInterval);
         clearTimeout(missTimer);
         closePhone();
-        narrate(`<strong>לחצת על ההודעה של סיגל בזמן!</strong> רגע אחר כך: "סבבה! בואי מתי שנוח לך." הבגדים שלך — חינם. 🎁`);
-        secureItem(item, 0);
-        setTimeout(showMainItemList, 1600);
+        const clothesItem = gameState.items.find(i => i.id === "clothes");
+        if (clothesItem && !clothesItem.isSecured) {
+          narrate(`<strong>לחצת על ההודעה של סיגל בזמן!</strong> רגע אחר כך: "סבבה! בואי מתי שנוח לך." הבגדים שלך — חינם. 🎁`);
+          secureItem(clothesItem, 0);
+          setTimeout(showMainItemList, 1600);
+        } else {
+          showMainItemList();
+        }
       });
     }
     phoneContent.appendChild(div);
@@ -510,6 +703,7 @@ function openWhatsAppGroup(item) {
   scrollInterval = setTimeout(tick, 500);
 
   missTimer = setTimeout(() => {
+    if (!_groupActive) return;
     if (giveawayClickable) {
       giveawayClickable = false;
       if (giveawayEl) {
@@ -528,7 +722,7 @@ function openWhatsAppGroup(item) {
         closePhone();
         drainSanity(5);
         showToast("פספסת. −5 שפיות");
-        showItemMenu(item);
+        showMainItemList();
       };
       phoneContent.appendChild(closeNote);
       phoneContent.scrollTop = phoneContent.scrollHeight;
@@ -536,10 +730,10 @@ function openWhatsAppGroup(item) {
   }, 7000);
 
   phoneCloseBtn.onclick = () => {
-    clearInterval(scrollInterval);
+    _groupActive = false;
+    clearTimeout(scrollInterval);
     clearTimeout(missTimer);
     closePhone();
-    showItemMenu(item);
   };
 }
 
@@ -590,11 +784,24 @@ function openRonitNegotiation(item) {
         const cleaned = raw.replace(/```json|```/g, "").trim();
         parsed = JSON.parse(cleaned);
       } catch {
-        parsed = { text: raw, agreedPrice: null, leaveOutside: false, dealClosed: false };
+        parsed = { text: raw, agreedPrice: null, leaveOutside: false, dealClosed: false, sendImage: false };
       }
 
       gameState.roniConvoHistory.push({ role: "model", text: parsed.text });
       addChatBubble("רונית", parsed.text, "ronit");
+
+      if (parsed.sendImage) {
+        const imgDiv = document.createElement("div");
+        imgDiv.className = "wa-bubble incoming chat-bubble-ronit";
+        imgDiv.innerHTML = `
+          <span class="wa-sender">רונית</span>
+          <img src="assets/Second-handDresser.png"
+               style="width:100%;max-width:200px;border-radius:8px;margin-top:6px;display:block;"
+               alt="שידה יד שנייה"/>
+        `;
+        phoneContent.appendChild(imgDiv);
+        phoneContent.scrollTop = phoneContent.scrollHeight;
+      }
 
       if (parsed.dealClosed && parsed.agreedPrice) {
         const price = parsed.agreedPrice;
@@ -624,8 +831,8 @@ function openRonitNegotiation(item) {
 }
 
 
-// ── משא ומתן AI עם רונית ל. (עגלה) ──────────────────────────────────────────
-function openRonitLNegotiation() {
+// ── משא ומתן AI עם הדר (עגלה) ──────────────────────────────────────────
+function openHadarNegotiation() {
   // מוצא את פריט העגלה
   const item = gameState.items.find(i => i.id === "stroller");
   if (!item || item.isSecured) {
@@ -636,13 +843,13 @@ function openRonitLNegotiation() {
   gameState.negotiating = true;
   const history = [];
 
-  phoneAppName.textContent = "🛒 רונית ל. (עגלה)";
+  phoneAppName.textContent = "🛒 הדר (עגלה)";
   $("phone-status-bar").style.background = "#25d366";
   phoneContent.innerHTML = "";
   phoneInputArea.classList.remove("hidden");
   phoneOverlay.classList.remove("hidden");
 
-  addChatBubble("רונית ל.", "היי! ראיתי שפנית בנוגע לעגלה. 700 שקל, מצב מצוין, הבת שלי השתמשה בה בקושי. מעניין אותך?", "ronit");
+  addChatBubble("הדר", "היי! ראיתי שפנית בנוגע לעגלה. 700 שקל, מצב מצוין, הבת שלי השתמשה בה בקושי. מעניין אותך?", "ronit");
 
   phoneCloseBtn.onclick = () => {
     gameState.negotiating = false;
@@ -661,7 +868,7 @@ function openRonitLNegotiation() {
 
     try {
       const fullHistory = history
-        .map(m => `${m.role === "user" ? "משחקנית" : "רונית ל."}: ${m.text}`)
+        .map(m => `${m.role === "user" ? "משחקנית" : "הדר"}: ${m.text}`)
         .join("\n");
       const contextualMessage = fullHistory
         ? `שיחה קודמת:\n${fullHistory}\n\nהודעה אחרונה מהמשחקנית: ${msg}`
@@ -669,7 +876,7 @@ function openRonitLNegotiation() {
 
       history.push({ role: "user", text: msg });
 
-      const raw = await callGemini(contextualMessage, RONIT_L_PROMPT);
+      const raw = await callGemini(contextualMessage, HADAR_PROMPT);
       typingEl.remove();
 
       let parsed;
@@ -677,11 +884,24 @@ function openRonitLNegotiation() {
         const cleaned = raw.replace(/```json|```/g, "").trim();
         parsed = JSON.parse(cleaned);
       } catch {
-        parsed = { text: raw, agreedPrice: null, dealClosed: false };
+        parsed = { text: raw, agreedPrice: null, dealClosed: false, sendImage: false };
       }
 
       history.push({ role: "model", text: parsed.text });
-      addChatBubble("רונית ל.", parsed.text, "ronit");
+      addChatBubble("הדר", parsed.text, "ronit");
+
+      if (parsed.sendImage) {
+        const imgDiv = document.createElement("div");
+        imgDiv.className = "wa-bubble incoming chat-bubble-ronit";
+        imgDiv.innerHTML = `
+          <span class="wa-sender">הדר</span>
+          <img src="assets/RonitSecond-handStroller.png"
+               style="width:100%;max-width:200px;border-radius:8px;margin-top:6px;display:block;"
+               alt="עגלה יד שנייה"/>
+        `;
+        phoneContent.appendChild(imgDiv);
+        phoneContent.scrollTop = phoneContent.scrollHeight;
+      }
 
       if (parsed.dealClosed && parsed.agreedPrice) {
         const price = parsed.agreedPrice;
@@ -766,12 +986,198 @@ function addTypingIndicator() {
 }
 
 function closePhone() {
+  _groupActive = false;
   phoneOverlay.classList.add("hidden");
   phoneContent.innerHTML = "";
   phoneInputArea.classList.add("hidden");
   phoneSendBtn.onclick = null;
   phoneTextInput.onkeydown = null;
   phoneCloseBtn.onclick = null;
+  document.getElementById("phone-home").classList.add("hidden");
+  const chatBack = document.getElementById("chat-back-btn");
+  if (chatBack) chatBack.classList.add("hidden");
+}
+
+// ── ניווט מסכי טלפון ────────────────────────────────────────────────────────
+function openPhoneHome() {
+  clearPhoneNotifications();
+  document.getElementById("phone-home").classList.remove("hidden");
+  phoneContent.classList.add("hidden");
+  phoneInputArea.classList.add("hidden");
+
+  const chatBackBtn = document.getElementById("chat-back-btn");
+  if (chatBackBtn) chatBackBtn.classList.add("hidden");
+
+  const now = new Date();
+  const timeEl = document.getElementById("phone-home-time");
+  if (timeEl) timeEl.textContent =
+    now.getHours().toString().padStart(2, "0") + ":" +
+    now.getMinutes().toString().padStart(2, "0");
+
+  phoneAppName.textContent = "הודעות";
+  phoneOverlay.classList.remove("hidden");
+}
+
+function addPhoneNotification(contactId, count = 1) {
+  const row = document.querySelector(`.contact-row[data-contact="${contactId}"]`);
+  if (row) {
+    const badge = row.querySelector(".contact-badge");
+    if (badge) {
+      badge.classList.remove("hidden");
+      badge.textContent = count;
+    }
+  }
+  const icon = document.getElementById("phone-icon");
+  const dot  = document.getElementById("phone-notification-dot");
+  if (icon) icon.classList.add("ringing");
+  if (dot)  dot.classList.remove("hidden");
+}
+
+function clearPhoneNotifications() {
+  phoneState.notifications = 0;
+  const dot  = document.getElementById("phone-notification-dot");
+  const icon = document.getElementById("phone-icon");
+  if (dot)  dot.classList.add("hidden");
+  if (icon) icon.classList.remove("ringing");
+}
+
+// ── צ׳אט AI גנרי לכל איש קשר ───────────────────────────────────────────────
+function openContactChat(contactId) {
+  const name    = CONTACT_NAMES[contactId];
+  const prompt  = CONTACT_PROMPTS[contactId];
+  if (!prompt) return;
+
+  phoneSendBtn.onclick = null;
+  phoneTextInput.onkeydown = null;
+  phoneContent.innerHTML = "";
+
+  const history = chatHistories[contactId];
+
+  phoneContent.classList.remove("hidden");
+  phoneInputArea.classList.remove("hidden");
+  phoneAppName.textContent = "💬 " + name;
+
+  const chatBackBtn = document.getElementById("chat-back-btn");
+  if (chatBackBtn) {
+    chatBackBtn.classList.remove("hidden");
+    chatBackBtn.onclick = () => {
+      chatBackBtn.classList.add("hidden");
+      phoneContent.classList.add("hidden");
+      phoneInputArea.classList.add("hidden");
+      openPhoneHome();
+    };
+  }
+
+  if (history.length === 0) {
+    const greetings = {
+      oriel: "היי מאמי 💙 מה שלומך? הכל בסדר?",
+      mom:   "שלום אהובתי! חשבתי עלייך כל היום. איך את מרגישה?",
+      maya:  "היי! 🌸 חשבתי עלייך. מה קורה?",
+      shira: "היי! אז איך הולך? אצלי היה כזה כאוס בהתחלה, לא תאמיני...",
+      noa:   "היי... סורי שאני כותבת, סתם רציתי לדעת איך את 😅",
+      dana:  "HEYYYY 😎 אז מה קורה?! מתי כבר נצא??",
+    };
+    const greeting = greetings[contactId];
+    if (greeting) {
+      addChatBubble(name, greeting, "ronit");
+      history.push({ role: "model", text: greeting });
+    }
+  } else {
+    history.forEach(msg => {
+      addChatBubble(
+        msg.role === "user" ? "את" : name,
+        msg.text,
+        msg.role === "user" ? "player" : "ronit"
+      );
+    });
+  }
+
+  async function sendMessage() {
+    const msg = phoneTextInput.value.trim();
+    if (!msg) return;
+    phoneTextInput.value = "";
+    phoneTextInput.disabled = true;
+    phoneSendBtn.disabled = true;
+
+    addChatBubble("את", msg, "player");
+    history.push({ role: "user", text: msg });
+    const typingEl = addTypingIndicator();
+
+    try {
+      const fullHistory = history
+        .slice(0, -1)
+        .map(m => `${m.role === "user" ? "שחקנית" : name}: ${m.text}`)
+        .join("\n");
+      const contextualMessage = fullHistory
+        ? `שיחה קודמת:\n${fullHistory}\n\nהודעה אחרונה: ${msg}`
+        : msg;
+
+      const raw = await callGemini(contextualMessage, prompt());
+      typingEl.remove();
+
+      addChatBubble(name, raw, "ronit");
+      history.push({ role: "model", text: raw });
+
+      if (contactId === "maya")  restoreSanity(3);
+      if (contactId === "shira") drainSanity(2);
+      if (contactId === "dana")  restoreSanity(1);
+      if (contactId === "oriel") restoreSanity(4);
+      if (contactId === "mom")   restoreSanity(2);
+
+    } catch (err) {
+      typingEl.remove();
+      addChatBubble("מערכת", `⚠️ שגיאה: ${err.message}`, "ronit");
+    } finally {
+      phoneTextInput.disabled = false;
+      phoneSendBtn.disabled = false;
+      phoneTextInput.focus();
+    }
+  }
+
+  phoneSendBtn.onclick = sendMessage;
+  phoneTextInput.onkeydown = e => { if (e.key === "Enter") sendMessage(); };
+}
+
+// ── שיחת אבא — קצרה ומרגשת ─────────────────────────────────────────────────
+async function openDadCall() {
+  const homeEl = document.getElementById("phone-home");
+  if (homeEl) homeEl.classList.add("hidden");
+  phoneContent.classList.remove("hidden");
+  phoneInputArea.classList.add("hidden");
+
+  phoneAppName.textContent = "📞 אבא";
+  $("phone-status-bar").classList.add("call-mode");
+  $("phone-status-bar").style.background = "#3a3a3a";
+
+  phoneContent.innerHTML = `
+    <div class="wa-bubble incoming" style="font-style:italic;margin-top:3rem;">מתחבר...</div>
+  `;
+  phoneOverlay.classList.remove("hidden");
+
+  try {
+    const raw = await callGemini(
+      "התקשרת לבתך שזה עתה ילדה תינוקת. אמור לה משהו קצר מאוד, אישי ומרגש — משפט אחד או שניים בלבד.",
+      DAD_CALL_PROMPT
+    );
+    phoneContent.innerHTML = `
+      <div class="wa-bubble incoming" style="font-style:italic;margin-top:3rem;">${raw}</div>
+      <div class="wa-bubble incoming" style="font-size:0.78rem;color:#888;margin-top:0.5rem;">הקו התנתק.</div>
+    `;
+  } catch {
+    phoneContent.innerHTML = `
+      <div class="wa-bubble incoming" style="font-style:italic;margin-top:3rem;">
+        "את עושה עבודה טובה. אני רואה אותך."
+      </div>
+    `;
+  }
+
+  phoneCloseBtn.onclick = () => {
+    closePhone();
+    restoreSanity(8);
+    showToast("לשמוע את אבא עזר יותר ממה שציפית. +8 שפיות 🤍");
+    $("phone-status-bar").classList.remove("call-mode");
+    $("phone-status-bar").style.background = "";
+  };
 }
 
 // ── מעבר בין מחזות ──────────────────────────────────────────────────────────
@@ -792,22 +1198,19 @@ function triggerActTransition() {
 // ── מחזה ב׳ ─────────────────────────────────────────────────────────────────
 function beginAct2() {
   gameState.act = 2;
+  gameState.sleepCycle = 0;
+  gameState.lullabyPhase = false;
   hudAct.textContent = "מחזה ב׳ — השגרה";
+  updateHUD();
 
   if (gameState.superstition) {
     applySuperstitionFate();
     spawnBoxes();
-    setTimeout(beginStealthMode, 1200);
   } else {
     gameState.items.forEach(i => { i.inHouse = true; });
     renderRoom();
-    narrate(`
-      את בבית. חדר התינוקת מוכן. העריסה מורכבת, השידה מלאה.<br><br>
-      התינוקת ישנה. הכל מושלם. הכל מפחיד.<br><br>
-      <em>יש לך רגע לעצמך. מה את עושה?</em>
-    `);
-    setTimeout(showSelfCareMenu, 800);
-    beginStealthMode();
+    narrate(`את בבית. חדר התינוקת מוכן.<br><br>התינוקת ישנה רגע — אבל היא עומדת להתעורר.<br><em>מתחיל היום הראשון.</em>`);
+    setTimeout(beginLullaby, 1500);
   }
 }
 
@@ -848,75 +1251,97 @@ function unpackBox(item, boxEl) {
   narrate(`פרקת את <strong>${item.name}</strong>. ${document.querySelectorAll("[id^='box-']").length} קופסאות נותרו.`);
 
   if (document.querySelectorAll("[id^='box-']").length === 0) {
-    narrate("כל הקופסאות רוקנו. החדר נראה כמו חדר תינוקת. הגב כואב. התינוקת מתעוררת.");
-    showSelfCareMenu();
+    narrate("כל הקופסאות רוקנו. החדר נראה כמו חדר תינוקת. הגב כואב.");
+    setTimeout(beginLullaby, 1200);
   }
 }
 
-// ── תפריט טיפול עצמי / לוגיסטיקה — מחזה ב׳ ─────────────────────────────────
-function showSelfCareMenu() {
-  narrate("התינוקת ישנה. <strong>מד הערות</strong> עולה עם כל רעש. בחרי בחוכמה.");
+// ── שלב הרדמה — מחזה ב׳ ─────────────────────────────────────────────────────
+function beginLullaby() {
+  gameState.lullabyPhase = true;
+  gameState.stealthActive = true;
+  gameState.babyMeter = 80;
+  babyMeterFill.style.width = "80%";
+  babyMeterFill.classList.add("danger");
+  setChoices([]);
+  narrate("😴 התינוקת ערה ועצבנית. הזיזי את העכבר <strong>לאט מאוד</strong> עד שתירדם...");
+  beginStealthMode();
+}
+
+// ── שלב פעולה — מחזה ב׳ ──────────────────────────────────────────────────────
+function beginActionPhase() {
+  gameState.lullabyPhase = false;
+  gameState.stealthActive = true;
+  gameState.babyCried = false;
+  gameState.babyMeter = 0;
+  babyMeterFill.classList.remove("danger");
+  babyMeterFill.style.width = "0%";
+
+  const cycleNum = gameState.sleepCycle + 1;
+  narrate(`התינוקת נרדמה 😴  חלון ${cycleNum} מתוך ${gameState.totalCycles} — בחרי פעולה אחת:`);
 
   setChoices([
     {
-      label: "📖 קראי עמוד (+5 שפיות, שקט)",
+      label: "🍼 שאבי חלב — הכנה לאחר כך (רועש!)",
       action: () => {
-        restoreSanity(5);
-        gameState.wakeWindows++;
-        showToast("+5 שפיות — נזכרת מי את.");
-        showSelfCareMenu();
+        increaseBabyMeter(25);
+        restoreSanity(3);
+        showToast("שאיבה הסתיימה. הכנת לאחר כך.");
+        if (!gameState.babyCried) endActionPhase();
       }
     },
     {
-      label: "☕ הכיני קפה (+8 שפיות, שקט)",
+      label: "🧺 כבסי — לוגיסטיקה (רועש!)",
+      action: () => {
+        increaseBabyMeter(20);
+        restoreSanity(2);
+        showToast("מחזור הכביסה רץ.");
+        if (!gameState.babyCried) endActionPhase();
+      }
+    },
+    {
+      label: "☕ הכיני קפה — רגע לעצמך (שקט)",
       action: () => {
         restoreSanity(8);
-        gameState.wakeWindows++;
         showToast("+8 שפיות — חמימות בכפות הידיים.");
-        showSelfCareMenu();
+        endActionPhase();
       }
     },
     {
-      label: "🍼 שאבי חלב (לוגיסטיקה +1, שקט)",
+      label: "📖 קראי עמוד — רגע לעצמך (שקט)",
       action: () => {
-        gameState.act2Logistics++;
-        gameState.wakeWindows++;
-        showToast("שאיבה הסתיימה. לוגיסטיקה: " + gameState.act2Logistics);
-        if (gameState.act2Logistics >= 3) checkAct2Complete();
-        else showSelfCareMenu();
+        restoreSanity(5);
+        showToast("+5 שפיות — נזכרת מי את.");
+        endActionPhase();
       }
     },
     {
-      label: "🧺 כבסי (לוגיסטיקה +1, רועש!)",
+      label: "📞 התקשרי לאוריאל",
       action: () => {
-        gameState.act2Logistics++;
-        gameState.wakeWindows++;
-        increaseBabyMeter(20);
-        showToast("מחזור הכביסה. כמובן שדווקא עכשיו. לוגיסטיקה: " + gameState.act2Logistics);
-        if (gameState.act2Logistics >= 3) checkAct2Complete();
-        else showSelfCareMenu();
+        openPhoneCall();
+        const origClose = phoneCloseBtn.onclick;
+        phoneCloseBtn.onclick = () => {
+          if (origClose) origClose();
+          endActionPhase();
+        };
       }
     }
   ]);
 }
 
-function checkAct2Complete() {
-  if (gameState.act2Logistics >= 3) {
-    setChoices([]);
+// ── סיום שלב פעולה ────────────────────────────────────────────────────────────
+function endActionPhase() {
+  gameState.sleepCycle++;
+  updateHUD();
 
-    // הערה בסיום שמשקפת את הגורל — רק במסלול האמונות
-    let fateNote = "";
-    if (gameState.superstition) {
-      const notes = {
-        good:    `<br><br><em style="color:#8aab84">התינוקת ישנה טוב היום. אולי אמא שלך ידעה.</em>`,
-        neutral: `<br><br><em style="color:#8a7070">קשה לדעת אם זה עזר. אבל שמרת על הקשר.</em>`,
-        bad:     `<br><br><em style="color:#c98a8e">יום קשה. אולי זה לא קשור. אולי כן.</em>`,
-      };
-      fateNote = notes[gameState.superstitionFate] || "";
-    }
-
-    narrate(`שרדת את היום הראשון. הלוגיסטיקה מטופלת. התינוקת עדיין ישנה.<br><br><em>עשית את זה. יום אחד כל פעם.</em>${fateNote}`);
-    setTimeout(triggerEnding, 2000);
+  if (gameState.sleepCycle >= gameState.totalCycles) {
+    triggerEnding();
+  } else {
+    narrate("התינוקת מתעוררת... 👶");
+    setTimeout(() => {
+      drainSanity(2);
+      beginLullaby();
+    }, 1500);
   }
 }
 
@@ -924,15 +1349,11 @@ function checkAct2Complete() {
 let lastX = 0, lastY = 0, lastTime = 0;
 
 function beginStealthMode() {
-  gameState.stealthActive = true;
   babyMeterCont.style.display = "flex";
-
-  ["sprite-laundry", "sprite-keys", "sprite-dishes"].forEach(id => {
-    const el = $(id);
-    if (el) { el.style.display = "flex"; el.classList.add("visible"); }
-  });
-
-  document.addEventListener("mousemove", stealthMouseHandler);
+  if (!gameState.stealthListenerAdded) {
+    gameState.stealthListenerAdded = true;
+    document.addEventListener("mousemove", stealthMouseHandler);
+  }
 }
 
 function stealthMouseHandler(e) {
@@ -944,20 +1365,34 @@ function stealthMouseHandler(e) {
 
   const dist  = Math.hypot(e.clientX - lastX, e.clientY - lastY);
   const speed = dist / dt;
-  const s     = gameState.babyMeterSlowdown; // 0.6 במזל טוב, 1.0 אחרת
+  const s     = gameState.babyMeterSlowdown;
 
-  if (speed > 1.5) {
-    increaseBabyMeter(speed * 1.8 * s);
-  }
-
-  document.querySelectorAll(".noisy-sprite").forEach(sprite => {
-    const r = sprite.getBoundingClientRect();
-    if (e.clientX >= r.left && e.clientX <= r.right &&
-        e.clientY >= r.top  && e.clientY <= r.bottom) {
-      const penalty = parseInt(sprite.dataset.noisy || "10", 10);
-      increaseBabyMeter(penalty * s);
+  if (gameState.lullabyPhase) {
+    if (speed < 0.8) {
+      gameState.babyMeter = Math.max(0, gameState.babyMeter - 1.5);
+      babyMeterFill.style.width = gameState.babyMeter + "%";
+      if (gameState.babyMeter <= 30) babyMeterFill.classList.remove("danger");
+      if (gameState.babyMeter === 0) {
+        gameState.stealthActive = false;
+        gameState.lullabyPhase = false;
+        setTimeout(beginActionPhase, 800);
+      }
+    } else if (speed > 1.5) {
+      increaseBabyMeter(speed * 1.5 * s);
     }
-  });
+  } else {
+    if (speed > 1.5) {
+      increaseBabyMeter(speed * 1.8 * s);
+    }
+    document.querySelectorAll(".noisy-sprite").forEach(sprite => {
+      const r = sprite.getBoundingClientRect();
+      if (e.clientX >= r.left && e.clientX <= r.right &&
+          e.clientY >= r.top  && e.clientY <= r.bottom) {
+        const penalty = parseInt(sprite.dataset.noisy || "10", 10);
+        increaseBabyMeter(penalty * s);
+      }
+    });
+  }
 
   lastX = e.clientX;
   lastY = e.clientY;
@@ -981,7 +1416,9 @@ function increaseBabyMeter(amount) {
 }
 
 function triggerBabyCrying() {
+  gameState.babyCried = true;
   gameState.stealthActive = false;
+  gameState.lullabyPhase = false;
   $("room-view").style.pointerEvents = "none";
   drainSanity(15);
   narrate(`<strong>😭 התינוקת התעוררה.</strong><br>הבכי ממלא את החדר. עצמת עיניים לשתי שניות בדיוק, ואז הלכת אליה. −15 שפיות.`);
@@ -993,8 +1430,7 @@ function triggerBabyCrying() {
         gameState.babyMeter = 0;
         babyMeterFill.style.width = "0%";
         $("room-view").style.pointerEvents = "";
-        gameState.stealthActive = true;
-        showSelfCareMenu();
+        beginLullaby();
       }
     }
   ]);
@@ -1006,11 +1442,17 @@ function triggerEnding() {
   gameState.stealthActive = false;
   babyMeterCont.style.display = "none";
 
+  const sanityLine = gameState.sanity >= 70
+    ? "את עייפה. אבל את בסדר. ממש בסדר."
+    : gameState.sanity >= 40
+      ? "שרדת. יום אחד כל פעם."
+      : "זה היה קשה. זה מותר להיות קשה.";
+
   actFade.classList.add("active");
   actFadeText.innerHTML = `
-    את אמא עכשיו.<br><br>
-    <span style="font-size:1.1rem;">תקציב שנשאר: ${gameState.budget.toLocaleString()} ₪ &ensp;·&ensp; שפיות: ${gameState.sanity}%</span><br><br>
-    <span style="font-size:0.9rem;font-style:italic;">מקום למישהי חדשה — ולך.</span>
+    שרדת את היום הראשון.<br><br>
+    <span style="font-size:1.1rem;">${sanityLine}</span><br><br>
+    <span style="font-size:0.9rem;font-style:italic;">תקציב שנשאר: ${gameState.budget.toLocaleString()} ₪ &ensp;·&ensp; שפיות: ${gameState.sanity}%</span>
   `;
 
   setTimeout(() => {
@@ -1049,6 +1491,38 @@ function init() {
   );
   updateHUD();
   renderRoom();
+
+  // Phone icon opens home screen
+  const phoneIconWrapper = document.getElementById("phone-icon-wrapper");
+  if (phoneIconWrapper) {
+    phoneIconWrapper.addEventListener("click", openPhoneHome);
+  }
+
+  // Close button
+  document.getElementById("phone-close-btn").addEventListener("click", closePhone);
+
+  // Contact rows — unified handler
+  document.querySelectorAll(".contact-row").forEach(el => {
+    el.addEventListener("click", () => {
+      const contact = el.dataset.contact;
+      const disabled = ["maya", "shira", "noa", "dana"];
+      if (disabled.includes(contact)) {
+        showToast("בקרוב... 🌸");
+        return;
+      }
+      const badge = el.querySelector(".contact-badge");
+      if (badge) badge.classList.add("hidden");
+      document.getElementById("phone-home").classList.add("hidden");
+      if (contact === "group") {
+        openWhatsAppGroup(null);
+      } else if (contact === "dad") {
+        openDadCall();
+      } else {
+        openContactChat(contact);
+      }
+    });
+  });
+
   startOpeningScene();
 }
 
