@@ -2,6 +2,12 @@
 //  room.js — חדר תינוקת עם אסטים
 // ══════════════════════════════════════════════════════════════
 
+// ── אסטים תינוקת ──────────────────────────────────────────────
+const BABY_ASSETS = {
+  sleeping: "assets/SleepingBaby.png",
+  crying:   "assets/CryingBaby.png",
+};
+
 // ── מיפוי אסטים ───────────────────────────────────────────────
 const ASSETS = {
   room: "assets/EmptyBabyRoom.png",
@@ -257,4 +263,52 @@ function _attachItemHandles(el, item, container) {
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup",   onUp);
   });
+}
+
+// ── תינוקת בעריסה ─────────────────────────────────────────────
+function renderBaby(state) {
+  // state: "sleeping" | "crying" | "hidden"
+  const container = document.getElementById("room-view");
+  if (!container) return;
+
+  let babyEl = document.getElementById("room-baby");
+
+  if (state === "hidden") {
+    if (babyEl) babyEl.style.display = "none";
+    return;
+  }
+
+  if (!babyEl) {
+    babyEl = document.createElement("img");
+    babyEl.id = "room-baby";
+    babyEl.style.cssText = `
+      position: absolute;
+      object-fit: contain;
+      z-index: 2;
+      pointer-events: none;
+      transition: opacity 0.6s ease;
+    `;
+    container.appendChild(babyEl);
+  }
+
+  babyEl.style.left    = "5%";
+  babyEl.style.bottom  = "12%";
+  babyEl.style.width   = "14%";
+  babyEl.style.display = "block";
+  babyEl.style.opacity = "1";
+
+  const newSrc = BABY_ASSETS[state];
+  if (babyEl.src !== newSrc && newSrc) {
+    babyEl.style.opacity = "0";
+    setTimeout(() => {
+      babyEl.src = newSrc;
+      babyEl.style.opacity = "1";
+    }, 300);
+  }
+
+  if (state === "crying") {
+    babyEl.classList.add("baby-crying");
+  } else {
+    babyEl.classList.remove("baby-crying");
+  }
 }

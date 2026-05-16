@@ -35,6 +35,7 @@ const gameState = {
   babyMeter:            0,
   stealthActive:        false,
   negotiating:          false,
+  choiceMade:           false,
   roniConvoHistory:     [],
   itemPositions:        {},
 };
@@ -263,7 +264,7 @@ function applySuperstitionFate() {
 
 // ── הודעת טוסט ──────────────────────────────────────────────────────────────
 let toastEl;
-function showToast(msg, duration = 2600) {
+function showToast(msg, duration = 3500) {
   if (!toastEl) {
     toastEl = document.createElement("div");
     toastEl.id = "toast";
@@ -277,7 +278,12 @@ function showToast(msg, duration = 2600) {
 
 // ── עדכון נרטיב וכפתורי בחירה ───────────────────────────────────────────────
 function narrate(text) {
-  narrationText.innerHTML = text;
+  narrationText.style.opacity = "0";
+  narrationText.style.transition = "opacity 0.4s ease";
+  setTimeout(() => {
+    narrationText.innerHTML = text;
+    narrationText.style.opacity = "1";
+  }, 350);
 }
 
 function setChoices(choices) {
@@ -393,6 +399,9 @@ function startOpeningScene() {
     {
       label: "כן - אשאיר הכל בחוץ עד שהתינוקת תגיע.",
       action: () => {
+        gameState.choiceMade = true;
+        const phoneWrapper = document.getElementById("phone-icon-wrapper");
+        if (phoneWrapper) { phoneWrapper.style.opacity = "1"; phoneWrapper.style.cursor = "pointer"; }
         gameState.superstition = true;
         rollSuperstitionFate(); // הגרלה סמויה
         drainSanity(5);
@@ -405,6 +414,9 @@ function startOpeningScene() {
     {
       label: "לא - אני מסדרת את החדר עכשיו.",
       action: () => {
+        gameState.choiceMade = true;
+        const phoneWrapper = document.getElementById("phone-icon-wrapper");
+        if (phoneWrapper) { phoneWrapper.style.opacity = "1"; phoneWrapper.style.cursor = "pointer"; }
         gameState.superstition = false;
         drainSanity(5);
         showToast("−5 שפיות. גם ההחלטה הזו עולה משהו. 💙");
@@ -420,6 +432,7 @@ function startOpeningScene() {
 function beginAct1() {
   gameState.act = 1;
   hudAct.textContent = "מחזה א׳ — הקינון";
+  renderBaby("hidden");
   setTimeout(() => {
     addPhoneNotification("group", 2);
   }, 25000);
@@ -688,10 +701,10 @@ function openWhatsAppGroup(item) {
     return div;
   }
 
-  let revealDelay = 600;
+  let revealDelay = 1200;
   function tick() {
     revealNext();
-    revealDelay = Math.max(200, revealDelay - 30);
+    revealDelay = Math.max(600, revealDelay - 50);
     if (revealIndex < fakeMessages.length) scrollInterval = setTimeout(tick, revealDelay);
   }
   function revealNext() {
@@ -729,7 +742,7 @@ function openWhatsAppGroup(item) {
     }
   }, 7000);
 
-  phoneCloseBtn.onclick = () => {
+  phoneCloseBtn.onclick = () => 
     _groupActive = false;
     clearTimeout(scrollInterval);
     clearTimeout(missTimer);
@@ -1000,6 +1013,10 @@ function closePhone() {
 
 // ── ניווט מסכי טלפון ────────────────────────────────────────────────────────
 function openPhoneHome() {
+  if (!gameState.choiceMade) {
+    showToast("רגע... קודם תעני לאמא שלך. 📞");
+    return;
+  }
   clearPhoneNotifications();
   document.getElementById("phone-home").classList.remove("hidden");
   phoneContent.classList.add("hidden");
@@ -1209,6 +1226,7 @@ function beginAct2() {
   } else {
     gameState.items.forEach(i => { i.inHouse = true; });
     renderRoom();
+    renderBaby("sleeping");
     narrate(`את בבית. חדר התינוקת מוכן.<br><br>התינוקת ישנה רגע — אבל היא עומדת להתעורר.<br><em>מתחיל היום הראשון.</em>`);
     setTimeout(beginLullaby, 1500);
   }
@@ -1264,6 +1282,10 @@ function beginLullaby() {
   babyMeterFill.style.width = "80%";
   babyMeterFill.classList.add("danger");
   setChoices([]);
+  renderBaby("sleeping");
+  const babyEl = document.getElementById("room-baby");
+  if (babyEl) babyEl.style.cursor = "pointer";
+  if (babyEl) babyEl.style.pointerEvents = "auto";
   narrate("😴 התינוקת ערה ועצבנית. הזיזי את העכבר <strong>לאט מאוד</strong> עד שתירדם...");
   beginStealthMode();
 }
@@ -1348,6 +1370,16 @@ function endActionPhase() {
 // ── מכניזם עכבר סמוי — מחזה ב׳ ─────────────────────────────────────────────
 let lastX = 0, lastY = 0, lastTime = 0;
 
+function isMouseOverBaby(e) {
+  const babyEl = document.getElementById("room-baby");
+  if (!babyEl) return false;
+  const r = babyEl.getBoundingClientRect();
+  return (
+    e.clientX >= r.left && e.clientX <= r.right &&
+    e.clientY >= r.top  && e.clientY <= r.bottom
+  );
+}
+
 function beginStealthMode() {
   babyMeterCont.style.display = "flex";
   if (!gameState.stealthListenerAdded) {
@@ -1368,17 +1400,22 @@ function stealthMouseHandler(e) {
   const s     = gameState.babyMeterSlowdown;
 
   if (gameState.lullabyPhase) {
-    if (speed < 0.8) {
-      gameState.babyMeter = Math.max(0, gameState.babyMeter - 1.5);
+    const overBaby = isMouseOverBaby(e);
+    if (overBaby && speed < 0.8) {
+      gameState.babyMeter = Math.max(0, gameState.babyMeter - 2.5);
       babyMeterFill.style.width = gameState.babyMeter + "%";
       if (gameState.babyMeter <= 30) babyMeterFill.classList.remove("danger");
       if (gameState.babyMeter === 0) {
-        gameState.stealthActive = false;
         gameState.lullabyPhase = false;
+        gameState.stealthActive = false;
+        renderBaby("sleeping");
+        const babyEl = document.getElementById("room-baby");
+        if (babyEl) babyEl.style.pointerEvents = "none";
+        if (babyEl) babyEl.style.cursor = "default";
         setTimeout(beginActionPhase, 800);
       }
     } else if (speed > 1.5) {
-      increaseBabyMeter(speed * 1.5 * s);
+      increaseBabyMeter(speed * 1.5 * (gameState.babyMeterSlowdown || 1.0));
     }
   } else {
     if (speed > 1.5) {
@@ -1416,6 +1453,7 @@ function increaseBabyMeter(amount) {
 }
 
 function triggerBabyCrying() {
+  renderBaby("crying");
   gameState.babyCried = true;
   gameState.stealthActive = false;
   gameState.lullabyPhase = false;
@@ -1427,6 +1465,7 @@ function triggerBabyCrying() {
       label: "הרגיעי אותה והמשיכי",
       primary: true,
       action: () => {
+        renderBaby("sleeping");
         gameState.babyMeter = 0;
         babyMeterFill.style.width = "0%";
         $("room-view").style.pointerEvents = "";
@@ -1496,6 +1535,8 @@ function init() {
   const phoneIconWrapper = document.getElementById("phone-icon-wrapper");
   if (phoneIconWrapper) {
     phoneIconWrapper.addEventListener("click", openPhoneHome);
+    phoneIconWrapper.style.opacity = "0.4";
+    phoneIconWrapper.style.cursor = "not-allowed";
   }
 
   // Close button

@@ -778,3 +778,17 @@ body {
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--rose); border-radius: 4px; }
+
+/* ─── Baby Visual ──────────────────────────────────────── */
+#room-baby {
+  cursor: default;
+}
+
+@keyframes baby-shake {
+  0%, 100% { transform: translateX(0); }
+  25%       { transform: translateX(-3px) rotate(-1deg); }
+  75%       { transform: translateX(3px) rotate(1deg); }
+}
+#room-baby.baby-crying {
+  animation: baby-shake 0.4s ease infinite;
+}
