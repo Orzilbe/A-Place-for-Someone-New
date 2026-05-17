@@ -94,6 +94,14 @@ body {
   gap: 0.35rem;
 }
 
+@keyframes panel-highlight {
+  0%, 100% { background: transparent; }
+  30%       { background: rgba(232,180,184,0.35); border-radius: 8px; }
+}
+.panel-stat.highlight {
+  animation: panel-highlight 1s ease 3;
+}
+
 .stat-label {
   font-size: 0.78rem;
   font-weight: 600;
@@ -836,6 +844,26 @@ body {
 }
 #room-crying-overlay.active {
   opacity: 1;
+}
+
+/* ─── Lullaby Hint ─────────────────────────────────────── */
+#lullaby-hint {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(253,246,240,0.92);
+  color: var(--charcoal);
+  font-size: 0.78rem;
+  padding: 0.3rem 0.9rem;
+  border-radius: 20px;
+  border: 1px solid var(--rose);
+  z-index: 10;
+  pointer-events: none;
+  white-space: nowrap;
+}
+#lullaby-hint.hidden {
+  display: none;
 }
 
 /* ─── Baby Sound Waves ─────────────────────────────────── */

@@ -173,6 +173,17 @@ function updateHUD() {
       itemsEl.appendChild(row);
     });
   }
+
+  const cycleEl = document.getElementById("hud-cycle");
+  if (cycleEl) {
+    if (gameState.act === 2) {
+      cycleEl.style.display = "flex";
+      const valEl = cycleEl.querySelector(".stat-value");
+      if (valEl) valEl.textContent = `${gameState.sleepCycle + 1} / ${gameState.totalCycles}`;
+    } else {
+      cycleEl.style.display = "none";
+    }
+  }
 }
 
 // ── עדכוני תקציב / שפיות ────────────────────────────────────────────────────
@@ -314,14 +325,21 @@ function setChoices(choices) {
     const btn = document.createElement("button");
     btn.textContent = label;
     if (primary) btn.classList.add("primary");
-    btn.addEventListener("click", () => {
-      choiceButtons.querySelectorAll("button").forEach(b => {
-        b.disabled = true;
-        b.style.opacity = "0.5";
-        b.style.cursor = "not-allowed";
+    if (label.includes("(אין תקציב)")) {
+      btn.disabled = true;
+      btn.style.opacity = "0.4";
+      btn.style.cursor = "not-allowed";
+      btn.style.pointerEvents = "none";
+    } else {
+      btn.addEventListener("click", () => {
+        choiceButtons.querySelectorAll("button").forEach(b => {
+          b.disabled = true;
+          b.style.opacity = "0.5";
+          b.style.cursor = "not-allowed";
+        });
+        action();
       });
-      action();
-    });
+    }
     choiceButtons.appendChild(btn);
   });
 }
@@ -343,7 +361,7 @@ function secureItem(item, cost, fromRonitL = false) {
     renderRoom();
     showToast(`${item.name} כבר בחדר התינוקת! 🏠`);
   } else {
-    showToast(`${item.name} מאובטח — ממתין בחוץ בקופסה. 📦`);
+    showToast(`${item.name} נרכש — ממתין בחוץ בקופסה. 📦`);
   }
   if (cost > 0) spendBudget(cost);
   updateHUD();
@@ -363,7 +381,7 @@ function showItemMenu(item) {
     const choices = [];
     if (item.id === "clothes") {
       choices.push({
-        label: "💬 בדקי בקבוצה — אולי יש בחינם",
+        label: "💬 בדקי בקבוצה - אולי יש בחינם",
         primary: true,
         action: () => openWhatsAppGroup(null)
       });
@@ -375,20 +393,16 @@ function showItemMenu(item) {
 
   const choices = [
     {
-      label: `קנייה חדשה — ${item.costNew.toLocaleString()} ₪`,
+      label: `קנייה חדשה — ${item.costNew.toLocaleString()} ₪${gameState.budget < item.costNew ? " (אין תקציב)" : ""}`,
       action: () => {
-        if (gameState.budget < item.costNew) {
-          showToast("אין מספיק תקציב לזה. 😬");
-          narrate(`<strong>${item.emoji} ${item.name}</strong><br><em>חדש עולה ${item.costNew.toLocaleString()} ₪ ואין מספיק בתקציב.</em><br><small style="color:var(--muted);">אולי יד שנייה? או חזרי לרשימה לבקש עזרה ממשפחה.</small>`);
-          return;
-        }
+        if (gameState.budget < item.costNew) return;
         if (gameState.budget < 300 && item.costNew > 400) {
           drainSanity(3);
           showToast("זה מחוץ להישג יד עכשיו. −3 שפיות 💸");
           narrate(`<strong>${item.emoji} ${item.name}</strong><br><em>עמדת מול המחיר ולא יכולת. אולי יד שנייה? אולי הקבוצה?</em>`);
           return;
         }
-        narrate(`הזמנת <em>${item.name}</em> חדש לגמרי. טרי. יקר. שווה את זה.`);
+        narrate(`הזמנת <em>${item.name}</em> חדש לגמרי. יקר. שווה את זה.`);
         secureItem(item, item.costNew);
         setTimeout(showMainItemList, 1200);
       }
@@ -438,9 +452,16 @@ function openLoanChat(contact) {
 עני בחמימות, תציעי לעזור כלכלית מיד בלי שיפוט.
 הסכום שתציעי: בין 300 ל-600 שקל, לפי שיקול דעתך לפי תחושת השיחה.
 אחרי שהשחקנית מסכימה — סיימי את השיחה בחמימות.
-כשסוכם — החזירי JSON: { "text": "...", "loanAmount": <מספר>, "loanClosed": true }
-כל עוד לא סוכם: { "text": "...", "loanAmount": null, "loanClosed": false }
 כתבי בעברית יומיומית וחמה. פני בלשון נקבה.
+
+חשוב מאוד: אל תציגי את ה-JSON בהודעה. הטקסט שבשדה text הוא בלבד מה שהמשתמשת רואה.
+פורמט תשובה — JSON בלבד. ללא markdown. ללא טקסט מחוץ ל-JSON.
+סכמה: { "text": "<ההודעה שלך>", "loanAmount": <מספר או null>, "loanClosed": <true או false> }
+
+כללי הסגירה:
+- loanClosed: false כל עוד לא הוסכם על סכום
+- כשהשחקנית אומרת כן / בסדר / תודה / יאללה / מסכימה — הגדירי loanClosed: true ו-loanAmount למספר שהצעת
+- אל תשאלי אישור נוסף — ברגע שהיא מסכימה, סגרי את העסקה
       `.trim();
     } else {
       systemPrompt = `
@@ -450,9 +471,16 @@ function openLoanChat(contact) {
 עני בשיחה — תעזרי בסוף אבל תוסיפי הערה אחת על כך שלא הקשיבה.
 הסכום שתציעי: בין 300 ל-500 שקל.
 אחרי שהשחקנית מסכימה — סיימי עם הערה קטנה ואהבה.
-כשסוכם — החזירי JSON: { "text": "...", "loanAmount": <מספר>, "loanClosed": true }
-כל עוד לא סוכם: { "text": "...", "loanAmount": null, "loanClosed": false }
 כתבי בעברית יומיומית. פני בלשון נקבה.
+
+חשוב מאוד: אל תציגי את ה-JSON בהודעה. הטקסט שבשדה text הוא בלבד מה שהמשתמשת רואה.
+פורמט תשובה — JSON בלבד. ללא markdown. ללא טקסט מחוץ ל-JSON.
+סכמה: { "text": "<ההודעה שלך>", "loanAmount": <מספר או null>, "loanClosed": <true או false> }
+
+כללי הסגירה:
+- loanClosed: false כל עוד לא הוסכם על סכום
+- כשהשחקנית אומרת כן / בסדר / תודה / יאללה / מסכימה — הגדירי loanClosed: true ו-loanAmount למספר שהצעת
+- אל תשאלי אישור נוסף — ברגע שהיא מסכימה, סגרי את העסקה
       `.trim();
     }
   } else {
@@ -462,9 +490,16 @@ function openLoanChat(contact) {
 אתה אוהב אותה אבל קצת מופתע שהיא צריכה עזרה כלכלית.
 עני בחמימות אבל עם קצת שאלות — "כמה בדיוק צריך? על מה הכסף הלך?"
 בסוף תעזור — הסכום: בין 200 ל-500 שקל.
-כשסוכם — החזירי JSON: { "text": "...", "loanAmount": <מספר>, "loanClosed": true }
-כל עוד לא סוכם: { "text": "...", "loanAmount": null, "loanClosed": false }
 כתבי בעברית פשוטה. פנה בלשון נקבה.
+
+חשוב מאוד: אל תציגי את ה-JSON בהודעה. הטקסט שבשדה text הוא בלבד מה שהמשתמשת רואה.
+פורמט תשובה — JSON בלבד. ללא markdown. ללא טקסט מחוץ ל-JSON.
+סכמה: { "text": "<ההודעה שלך>", "loanAmount": <מספר או null>, "loanClosed": <true או false> }
+
+כללי הסגירה:
+- loanClosed: false כל עוד לא הוסכם על סכום
+- כשהשחקנית אומרת כן / בסדר / תודה / יאללה / מסכימה — הגדירי loanClosed: true ו-loanAmount למספר שהצעת
+- אל תשאלי אישור נוסף — ברגע שהיא מסכימה, סגרי את העסקה
       `.trim();
     } else {
       systemPrompt = `
@@ -472,9 +507,16 @@ function openLoanChat(contact) {
 אתה נותן בלי לשאול שאלות ובלי שיפוט. זו הבת שלך.
 עני בחום ובקצרה — משפט תומך ומציע עזרה מיד.
 הסכום: בין 300 ל-600 שקל לפי תחושת השיחה.
-כשסוכם — החזירי JSON: { "text": "...", "loanAmount": <מספר>, "loanClosed": true }
-כל עוד לא סוכם: { "text": "...", "loanAmount": null, "loanClosed": false }
 כתבי בעברית פשוטה וקצרה. פנה בלשון נקבה.
+
+חשוב מאוד: אל תציגי את ה-JSON בהודעה. הטקסט שבשדה text הוא בלבד מה שהמשתמשת רואה.
+פורמט תשובה — JSON בלבד. ללא markdown. ללא טקסט מחוץ ל-JSON.
+סכמה: { "text": "<ההודעה שלך>", "loanAmount": <מספר או null>, "loanClosed": <true או false> }
+
+כללי הסגירה:
+- loanClosed: false כל עוד לא הוסכם על סכום
+- כשהשחקנית אומרת כן / בסדר / תודה / יאללה / מסכימה — הגדירי loanClosed: true ו-loanAmount למספר שהצעת
+- אל תשאלי אישור נוסף — ברגע שהיא מסכימה, סגרי את העסקה
       `.trim();
     }
   }
@@ -531,8 +573,13 @@ function openLoanChat(contact) {
 
       let parsed;
       try {
-        const cleaned = raw.replace(/```json|```/g, "").trim();
-        parsed = JSON.parse(cleaned);
+        const cleaned = raw.replace(/```json/g, "").replace(/```/g, "").trim();
+        const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonMatch[0]);
+        } else {
+          parsed = { text: raw, loanAmount: null, loanClosed: false };
+        }
       } catch {
         parsed = { text: raw, loanAmount: null, loanClosed: false };
       }
@@ -556,7 +603,7 @@ function openLoanChat(contact) {
           updateHUD();
           showToast(`+${amount.toLocaleString()} ₪ מ${name}. 💛`);
           showMainItemList();
-        }, 1200);
+        }, 3000);
       }
     } catch (err) {
       typingEl.remove();
@@ -660,7 +707,7 @@ function beginAct1() {
   }, 25000);
 
   if (gameState.superstition) {
-    narrate(`פתחת את רשימת הקניות. חמישה פריטים. הציוד יחכה בחוץ עד הלידה — אבל הכסף עדיין צריך לזוז.`);
+    narrate(`פתחת את רשימת הקניות. חמישה פריטים. הציוד יחכה בחוץ עד הלידה - אבל עדיין צריך לשלם על הדברים מראש.`);
     setTimeout(() => {
       showMainItemList();
       scheduleHusbandCall();
@@ -688,36 +735,56 @@ function scheduleMotherSupportCall() {
     }
     if (gameState.act !== 1 || gameState.negotiating) return;
 
-    const homeEl = document.getElementById("phone-home");
-    if (homeEl) homeEl.classList.add("hidden");
-    phoneContent.classList.remove("hidden");
-    phoneInputArea.classList.add("hidden");
+    gameState.callPending = true;
+    callBanner.classList.remove("hidden");
+    $("call-name").textContent = "אמא 📞";
+    $("call-sub").textContent = "מתקשרת...";
 
-    phoneAppName.textContent = "📞 אמא";
-    $("phone-status-bar").classList.add("call-mode");
-    $("phone-status-bar").style.background = "#3a3a3a";
+    $("call-answer-btn").onclick = () => {
+      callBanner.classList.add("hidden");
+      gameState.callPending = false;
+      openMomCall();
+    };
 
-    const lines = [
-      "\"עשית את הדבר הנכון. אני גאה בך. תשמרי על עצמך.\"",
-      "\"כשנולדת, גם אני חיכיתי. זה מה שעושים. את לא לבד.\"",
-      "\"הכל יהיה בסדר. תסמכי עלי - ותסמכי על עצמך.\""
-    ];
-    const line = lines[Math.floor(Math.random() * lines.length)];
-
-    phoneContent.innerHTML = `
-      <div class="wa-bubble incoming" style="font-style:italic;margin-top:auto;">${line}</div>
-      <div class="wa-bubble incoming" style="font-size:0.78rem;color:#888;">הקו חמים. היא ממתינה.</div>
-    `;
-    phoneOverlay.classList.remove("hidden");
-
-    phoneCloseBtn.onclick = () => {
-      closePhone();
-      restoreSanity(10); // יותר מאוריאל — אמא ממש שם
-      showToast("לשמוע את אמא עזר יותר ממה שציפית. +10 שפיות 💛");
-      $("phone-status-bar").classList.remove("call-mode");
-      $("phone-status-bar").style.background = "";
+    $("call-ignore-btn").onclick = () => {
+      callBanner.classList.add("hidden");
+      gameState.callPending = false;
+      drainSanity(3);
+      showToast("נתת לאמא לצלצל. −3 שפיות 💛");
     };
   }, delay);
+}
+
+function openMomCall() {
+  const homeEl = document.getElementById("phone-home");
+  if (homeEl) homeEl.classList.add("hidden");
+
+  phoneContent.classList.remove("hidden");
+  phoneInputArea.classList.add("hidden");
+  phoneAppName.textContent = "📞 אמא";
+  $("phone-status-bar").classList.add("call-mode");
+  $("phone-status-bar").style.background = "#3a3a3a";
+
+  const lines = [
+    "\"עשית את הדבר הנכון. אני גאה בך. תשמרי על עצמך.\"",
+    "\"כשנולדת, גם אני חיכיתי. זה מה שעושים. את לא לבד.\"",
+    "\"הכל יהיה בסדר. תסמכי עלי — ותסמכי על עצמך.\""
+  ];
+  const line = lines[Math.floor(Math.random() * lines.length)];
+
+  phoneContent.innerHTML = `
+    <div class="wa-bubble incoming" style="font-style:italic;margin-top:auto;">${line}</div>
+    <div class="wa-bubble incoming" style="font-size:0.78rem;color:#888;">הקו חמים. היא ממתינה.</div>
+  `;
+  phoneOverlay.classList.remove("hidden");
+
+  phoneCloseBtn.onclick = () => {
+    closePhone();
+    restoreSanity(10);
+    showToast("לשמוע את אמא עזר יותר ממה שציפית. +10 שפיות 💛");
+    $("phone-status-bar").classList.remove("call-mode");
+    $("phone-status-bar").style.background = "";
+  };
 }
 
 // ── מכניזם שיחת הבעל ────────────────────────────────────────────────────────
@@ -750,6 +817,8 @@ function scheduleHusbandCall() {
 
 function showCallBanner() {
   gameState.callPending = true;
+  $("call-name").textContent = "אוריאל 📞";
+  $("call-sub").textContent = "מתקשר מהבסיס...";
 
   if (!phoneOverlay.classList.contains("hidden")) {
     const homeEl = document.getElementById("phone-home");
@@ -821,9 +890,9 @@ function openPhoneCall() {
 
   const lines = [
     "\"מאמי, מה שלומך? הכל בסדר?\"",
-    "\"כמה שהייתי רוצה להיות שם. תגידי לי מה את צריכה.\"",
+    "\"כמה שהייתי רוצה לחזור הביתה להיות איתך ולעזור בהכנות \"",
     "\"החברים כאן שולחים דרישת שלום. כולנו חושבים עלייך.\"",
-    "\"אחזור הביתה בקרוב. תשמרי לי מאלה הביסקוויטים שאת אוהבת.\""
+    "\"אחזור הביתה בקרוב. יכולה לדאוג שיהיה דוריטוס חמוץ חריף?.\""
   ];
   const line = lines[Math.floor(Math.random() * lines.length)];
 
@@ -1030,8 +1099,13 @@ function openRonitNegotiation(item) {
 
       let parsed;
       try {
-        const cleaned = raw.replace(/```json|```/g, "").trim();
-        parsed = JSON.parse(cleaned);
+        const cleaned = raw.replace(/```json/g, "").replace(/```/g, "").trim();
+        const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonMatch[0]);
+        } else {
+          parsed = { text: raw, agreedPrice: null, leaveOutside: false, dealClosed: false, sendImage: false };
+        }
       } catch {
         parsed = { text: raw, agreedPrice: null, leaveOutside: false, dealClosed: false, sendImage: false };
       }
@@ -1131,8 +1205,13 @@ function openHadarNegotiation() {
 
       let parsed;
       try {
-        const cleaned = raw.replace(/```json|```/g, "").trim();
-        parsed = JSON.parse(cleaned);
+        const cleaned = raw.replace(/```json/g, "").replace(/```/g, "").trim();
+        const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonMatch[0]);
+        } else {
+          parsed = { text: raw, agreedPrice: null, dealClosed: false, sendImage: false };
+        }
       } catch {
         parsed = { text: raw, agreedPrice: null, dealClosed: false, sendImage: false };
       }
@@ -1458,25 +1537,6 @@ function triggerActTransition() {
   }, 4000);
 }
 
-// ── מסך הסבר פתיחת מחזה ב׳ ──────────────────────────────────────────────────
-function showAct2Intro() {
-  narrate(`
-    <strong>היום הראשון בבית 👶</strong><br><br>
-    התינוקת תישן ותתעורר מספר פעמים היום.
-    בכל פעם שהיא ישנה — בחרי פעולה אחת.<br><br>
-    <strong>מד הערות</strong> עולה כשמזיזים את העכבר מהר —
-    כשהוא מגיע ל-100% התינוקת מתעוררת.<br><br>
-    <strong>המשימות בצד:</strong> השלימי שאיבה, כביסה וטיפול עצמי
-    כדי לסיים את היום.<br><br>
-    <em>הזיזי את העכבר לאט מעל התינוקת כדי להרדים אותה.</em>
-  `);
-  setChoices([{
-    label: "מוכנה — מתחילים",
-    primary: true,
-    action: () => beginLullaby()
-  }]);
-}
-
 // ── מחזה ב׳ ─────────────────────────────────────────────────────────────────
 function beginAct2() {
   gameState.act = 2;
@@ -1485,7 +1545,10 @@ function beginAct2() {
   hudAct.textContent = "מחזה ב׳ — השגרה";
   updateHUD();
   setRoomMood("night");
-  document.getElementById("panel-tasks").style.display = "flex";
+  const tasksPanel = document.getElementById("panel-tasks");
+  tasksPanel.style.display = "flex";
+  tasksPanel.classList.add("highlight");
+  setTimeout(() => tasksPanel.classList.remove("highlight"), 3500);
 
   if (gameState.superstition) {
     applySuperstitionFate();
@@ -1494,7 +1557,7 @@ function beginAct2() {
     gameState.items.forEach(i => { i.inHouse = true; });
     renderRoom();
     renderBaby("sleeping");
-    setTimeout(showAct2Intro, 800);
+    setTimeout(beginLullaby, 1500);
   }
 }
 
@@ -1531,12 +1594,19 @@ function unpackBox(item, boxEl) {
   item.inHouse = true;
   renderRoom();
   showToast(`${item.name} פוּרַק! 📦 ➡️ ${item.emoji}`);
-  increaseBabyMeter(8);
-  narrate(`פרקת את <strong>${item.name}</strong>. ${document.querySelectorAll("[id^='box-']").length} קופסאות נותרו.`);
+  increaseBabyMeter(35);
+  showToast("רעש מהקופסה! מד הערות עלה בחדות 📦");
 
-  if (document.querySelectorAll("[id^='box-']").length === 0) {
-    narrate("כל הקופסאות רוקנו. החדר נראה כמו חדר תינוקת. הגב כואב.");
-    setTimeout(showAct2Intro, 1200);
+  const remaining = document.querySelectorAll("[id^='box-']").length;
+  narrate(`פרקת את <strong>${item.name}</strong>. ${remaining} קופסאות נותרו.`);
+
+  if (remaining === 0) {
+    if (gameState.babyMeter >= 100 || !gameState.stealthActive) {
+      narrate("כל הקופסאות רוקנו. אבל התינוקת התעוררת מהרעש...");
+    } else {
+      narrate("כל הקופסאות רוקנו. החדר נראה כמו חדר תינוקת. הגב כואב.");
+      setTimeout(beginLullaby, 1200);
+    }
   }
 }
 
@@ -1547,16 +1617,26 @@ function beginLullaby() {
   gameState.babyMeter = 80;
   babyMeterFill.style.width = "80%";
   babyMeterFill.classList.add("danger");
-  setChoices([]);
-  renderBaby("sleeping");
-  const babyEl = document.getElementById("room-baby");
-  if (babyEl) babyEl.style.cursor = "pointer";
-  if (babyEl) babyEl.style.pointerEvents = "auto";
-  if (babyEl) babyEl.classList.add("lullaby");
+
+  const cycleNum = gameState.sleepCycle + 1;
+
+  renderBaby("crying");
+
   narrate(`
-    😴 התינוקת ערה ועצבנית...<br><br>
-    <em>הזיזי את העכבר <strong>לאט מאוד</strong> מעל התינוקת עד שתירדם.</em>
+    <strong>😴 חלון שינה ${cycleNum} מתוך ${gameState.totalCycles}</strong><br><br>
+    התינוקת ערה. הזיזי את העכבר
+    <strong>לאט מאוד</strong> מעל התינוקת עד שתירדם.
   `);
+  setChoices([]);
+
+  const babyEl = document.getElementById("room-baby");
+  if (babyEl) {
+    babyEl.classList.add("lullaby");
+    babyEl.style.pointerEvents = "auto";
+  }
+
+  document.getElementById("lullaby-hint")?.classList.remove("hidden");
+
   beginStealthMode();
 }
 
@@ -1748,6 +1828,7 @@ function stealthMouseHandler(e) {
         if (babyEl) babyEl.style.pointerEvents = "none";
         if (babyEl) babyEl.style.cursor = "default";
         if (babyEl) babyEl.classList.remove("lullaby");
+        document.getElementById("lullaby-hint")?.classList.add("hidden");
         setTimeout(beginActionPhase, 800);
       }
     } else if (speed > 1.5) {
@@ -1818,12 +1899,13 @@ function triggerBabyCrying() {
 
   renderBaby("crying");
   document.getElementById("room-crying-overlay")?.classList.add("active");
+  document.getElementById("lullaby-hint")?.classList.add("hidden");
   $("room-view").style.pointerEvents = "none";
   drainSanity(15);
 
-  narrate(`<strong>😭 התינוקת התעוררה.</strong><br>הבכי ממלא את החדר. −15 שפיות.`);
+  narrate(`<strong>😭 התינוקת התעוררה!</strong><br>−15 שפיות.`);
   setChoices([{
-    label: "הרגיעי אותה והרדימי שוב",
+    label: "הרגיעי אותה",
     primary: true,
     action: () => {
       gameState.babyMeter = 0;
@@ -1831,7 +1913,6 @@ function triggerBabyCrying() {
       babyMeterFill.classList.remove("danger");
       document.getElementById("room-crying-overlay")?.classList.remove("active");
       $("room-view").style.pointerEvents = "";
-      renderBaby("sleeping");
       beginLullaby();
     }
   }]);
@@ -1841,22 +1922,56 @@ function triggerBabyCrying() {
 function triggerEnding() {
   document.removeEventListener("mousemove", stealthMouseHandler);
   gameState.stealthActive = false;
+  gameState.lullabyPhase = false;
   babyMeterCont.style.display = "none";
+
+  const lullabyHint = document.getElementById("lullaby-hint");
+  if (lullabyHint) lullabyHint.classList.add("hidden");
+
   const wavesEl = document.getElementById("baby-waves");
   if (wavesEl) wavesEl.classList.remove("active");
 
-  const sanityLine = gameState.sanity >= 70
-    ? "את עייפה. אבל את בסדר. ממש בסדר."
-    : gameState.sanity >= 40
-      ? "שרדת. יום אחד כל פעם."
-      : "זה היה קשה. זה מותר להיות קשה.";
+  let endingText;
+  if (gameState.sanity >= 70) {
+    endingText = "את עייפה. אבל את בסדר. ממש בסדר.";
+  } else if (gameState.sanity >= 40) {
+    endingText = "שרדת. יום אחד כל פעם.";
+  } else {
+    endingText = "זה היה קשה. זה מותר להיות קשה.";
+  }
 
-  actFade.classList.add("active");
+  let fateNote = "";
+  if (gameState.superstition) {
+    const notes = {
+      good:    `<br><br><em style="color:#8aab84">התינוקת ישנה טוב היום. אולי אמא שלך ידעה.</em>`,
+      neutral: `<br><br><em style="color:#8a7070">קשה לדעת אם זה עזר. אבל שמרת על הקשר.</em>`,
+      bad:     `<br><br><em style="color:#c98a8e">יום קשה. אולי זה לא קשור. אולי כן.</em>`,
+    };
+    fateNote = notes[gameState.superstitionFate] || "";
+  }
+
   actFadeText.innerHTML = `
-    שרדת את היום הראשון.<br><br>
-    <span style="font-size:1.1rem;">${sanityLine}</span><br><br>
-    <span style="font-size:0.9rem;font-style:italic;">תקציב שנשאר: ${gameState.budget.toLocaleString()} ₪ &ensp;·&ensp; שפיות: ${gameState.sanity}%</span>
+    את אמא עכשיו.<br><br>
+    <span style="font-size:1.1rem;">
+      תקציב שנשאר: ${gameState.budget.toLocaleString()} ₪
+      &ensp;·&ensp;
+      שפיות: ${gameState.sanity}%
+    </span><br><br>
+    <span style="font-size:1rem;font-style:normal;">
+      ${endingText}
+    </span>
+    ${fateNote}<br><br>
+    <span style="font-size:0.9rem;font-style:italic;">
+      מקום למישהי חדשה — ולך.
+    </span>
   `;
+
+  actFade.style.zIndex = "9999";
+  actFade.style.pointerEvents = "all";
+
+  setTimeout(() => {
+    actFade.classList.add("active");
+  }, 500);
 
   setTimeout(() => {
     setChoices([{
@@ -1864,9 +1979,7 @@ function triggerEnding() {
       primary: true,
       action: () => location.reload()
     }]);
-    actFade.style.pointerEvents = "none";
-    actFade.classList.remove("active");
-  }, 5000);
+  }, 4000);
 }
 
 function triggerBadEnding() {
