@@ -66,6 +66,7 @@ function initRoomBackground() {
     object-position: center;
     z-index: 0;
     pointer-events: none;
+    transition: opacity 0.6s ease;
   `;
 
   const firstChild = container.firstChild;
@@ -265,6 +266,26 @@ function _attachItemHandles(el, item, container) {
   });
 }
 
+// ── מצב רוח חדר (יום / לילה) ─────────────────────────────────
+function setRoomMood(mood) {
+  const bg = document.getElementById("room-asset-bg");
+  if (!bg) return;
+
+  if (mood === "night") {
+    bg.style.opacity = "0";
+    setTimeout(() => {
+      bg.src = "assets/NightRoom.png";
+      bg.style.opacity = "1";
+    }, 600);
+  } else if (mood === "day") {
+    bg.style.opacity = "0";
+    setTimeout(() => {
+      bg.src = "assets/EmptyBabyRoom.png";
+      bg.style.opacity = "1";
+    }, 600);
+  }
+}
+
 // ── תינוקת בעריסה ─────────────────────────────────────────────
 function renderBaby(state) {
   // state: "sleeping" | "crying" | "hidden"
@@ -291,9 +312,9 @@ function renderBaby(state) {
     container.appendChild(babyEl);
   }
 
-  babyEl.style.left    = "5%";
-  babyEl.style.bottom  = "12%";
-  babyEl.style.width   = "14%";
+  babyEl.style.left    = "4%";
+  babyEl.style.bottom  = "4%";
+  babyEl.style.width   = "16%";
   babyEl.style.display = "block";
   babyEl.style.opacity = "1";
 

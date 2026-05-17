@@ -18,6 +18,12 @@
       <!-- 70%: תצוגת החדר -->
       <section id="room-view">
         <div id="room-bg"></div>
+        <div id="room-crying-overlay"></div>
+        <div id="baby-waves">
+          <div class="wave-ring"></div>
+          <div class="wave-ring"></div>
+          <div class="wave-ring"></div>
+        </div>
 
         <!-- מד ערות תינוקת — מחזה ב׳ -->
         <div id="baby-meter-container" style="display:none">
@@ -70,6 +76,32 @@
       <!-- מחזה -->
       <div class="panel-stat" id="panel-act-section">
         <div class="stat-label" id="hud-act">מחזה א׳ — הקינון</div>
+      </div>
+
+      <!-- משימות יום — מחזה ב׳ -->
+      <div class="panel-stat" id="panel-tasks" style="display:none">
+        <div class="stat-label">משימות היום</div>
+        <div id="task-list">
+          <div class="task-item" id="task-pump">
+            <span class="task-icon">🍼</span>
+            <span class="task-name">שאיבה</span>
+            <span class="task-check">○</span>
+          </div>
+          <div class="task-item" id="task-laundry">
+            <span class="task-icon">🧺</span>
+            <span class="task-name">כביסה</span>
+            <span class="task-check">○</span>
+          </div>
+          <div class="task-item" id="task-selfcare">
+            <span class="task-icon">💆</span>
+            <span class="task-name">טיפול עצמי</span>
+            <span class="task-check">○</span>
+          </div>
+        </div>
+        <div id="tasks-subtitle"
+             style="font-size:0.65rem;color:var(--muted);margin-top:4px;">
+          השלימי את כל המשימות להשלמת היום
+        </div>
       </div>
 
       <div id="panel-phone" class="panel-stat">

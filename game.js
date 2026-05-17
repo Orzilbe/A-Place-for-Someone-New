@@ -38,6 +38,13 @@ const gameState = {
   choiceMade:           false,
   roniConvoHistory:     [],
   itemPositions:        {},
+  tasksCompleted: {
+    pump:     false,
+    laundry:  false,
+    selfcare: false,
+  },
+  loanFromMom: false,
+  loanFromDad: false,
 };
 
 // ── מצב טלפון ───────────────────────────────────────────────────────────────
@@ -101,7 +108,18 @@ const babyMeterFill  = $("baby-meter-fill");
 // ── עדכון לוח הצד ────────────────────────────────────────────────────────────
 function updateHUD() {
   const budgetVal = document.getElementById("hud-budget-val");
-  if (budgetVal) budgetVal.textContent = gameState.budget.toLocaleString("he-IL") + " ₪";
+  if (budgetVal) {
+    budgetVal.textContent = gameState.budget.toLocaleString("he-IL") + " ₪";
+    if (gameState.budget === 0) {
+      budgetVal.style.color = "#c03030";
+    } else if (gameState.budget < 300) {
+      budgetVal.style.color = "#e07030";
+    } else if (gameState.budget < 1000) {
+      budgetVal.style.color = "#c8a030";
+    } else {
+      budgetVal.style.color = "#4a7c59";
+    }
+  }
 
   const heartsEl = document.getElementById("sanity-hearts");
   if (heartsEl) {
@@ -161,6 +179,7 @@ function updateHUD() {
 function spendBudget(amount) {
   gameState.budget = Math.max(0, gameState.budget - amount);
   updateHUD();
+
   const budgetEl = document.getElementById("hud-budget-val");
   if (budgetEl) {
     budgetEl.classList.remove("pulse-red");
@@ -168,8 +187,16 @@ function spendBudget(amount) {
     budgetEl.classList.add("pulse-red");
     setTimeout(() => budgetEl.classList.remove("pulse-red"), 600);
   }
+
+  if (gameState.budget < 1000 && gameState.budget > 0) {
+    drainSanity(2);
+    showToast("התקציב דל. הלחץ עולה. −2 שפיות 💸");
+  }
+
   if (gameState.budget === 0) {
-    narrate("נגמר הכסף. החדר ישאר ריק קצת יותר.");
+    drainSanity(5);
+    narrate(`<strong>נגמר הכסף.</strong><br>עמדת מול הרשימה ריקת הידיים. חלק מהפריטים כבר לא בהישג יד. −5 שפיות.`);
+    showToast("אין יותר תקציב. −5 שפיות 💸");
   }
 }
 
@@ -278,12 +305,7 @@ function showToast(msg, duration = 3500) {
 
 // ── עדכון נרטיב וכפתורי בחירה ───────────────────────────────────────────────
 function narrate(text) {
-  narrationText.style.opacity = "0";
-  narrationText.style.transition = "opacity 0.4s ease";
-  setTimeout(() => {
-    narrationText.innerHTML = text;
-    narrationText.style.opacity = "1";
-  }, 350);
+  narrationText.innerHTML = text;
 }
 
 function setChoices(choices) {
@@ -336,12 +358,33 @@ function showItemMenu(item) {
     return;
   }
 
+  if (gameState.budget === 0) {
+    narrate(`<strong>${item.emoji} ${item.name}</strong><br><em>אין תקציב. אפשר לחפש בחינם בלבד.</em>`);
+    const choices = [];
+    if (item.id === "clothes") {
+      choices.push({
+        label: "💬 בדקי בקבוצה — אולי יש בחינם",
+        primary: true,
+        action: () => openWhatsAppGroup(null)
+      });
+    }
+    choices.push({ label: "← חזרה", action: showMainItemList });
+    setChoices(choices);
+    return;
+  }
+
   const choices = [
     {
       label: `קנייה חדשה — ${item.costNew.toLocaleString()} ₪`,
       action: () => {
         if (gameState.budget < item.costNew) {
           showToast("אין מספיק תקציב לזה. 😬");
+          return;
+        }
+        if (gameState.budget < 300 && item.costNew > 400) {
+          drainSanity(3);
+          showToast("זה מחוץ להישג יד עכשיו. −3 שפיות 💸");
+          narrate(`<strong>${item.emoji} ${item.name}</strong><br><em>עמדת מול המחיר ולא יכולת. אולי יד שנייה? אולי הקבוצה?</em>`);
           return;
         }
         narrate(`הזמנת <em>${item.name}</em> חדש לגמרי. טרי. יקר. שווה את זה.`);
@@ -352,8 +395,15 @@ function showItemMenu(item) {
     {
       label: `יד שנייה — מ-${item.costUsed.toLocaleString()} ₪`,
       action: () => {
+        if (gameState.budget < 300 && item.costUsed > 400) {
+          drainSanity(2);
+          showToast("גם יד שנייה זה יותר מדי עכשיו. −2 שפיות 💸");
+          return;
+        }
         if (item.id === "dresser") {
           openRonitNegotiation(item);
+        } else if (item.id === "stroller") {
+          openWhatsAppGroup(null);
         } else {
           openGenericNegotiation(item);
         }
@@ -457,6 +507,13 @@ function beginAct1() {
 function scheduleMotherSupportCall() {
   const delay = 20000 + Math.random() * 20000;
   setTimeout(() => {
+    if (gameState.act === 2) {
+      if (gameState.stealthActive) {
+        increaseBabyMeter(25);
+        showToast("הטלפון של אמא צלצל! מד הערות עלה. 📱");
+      }
+      return;
+    }
     if (gameState.act !== 1 || gameState.negotiating) return;
 
     const homeEl = document.getElementById("phone-home");
@@ -493,9 +550,15 @@ function scheduleMotherSupportCall() {
 
 // ── מכניזם שיחת הבעל ────────────────────────────────────────────────────────
 function scheduleHusbandCall() {
-  if (gameState.act !== 1) return;
   const delay = 15000 + Math.random() * 30000;
   gameState.callTimer = setTimeout(() => {
+    if (gameState.act === 2) {
+      if (gameState.stealthActive) {
+        increaseBabyMeter(30);
+        showToast("הטלפון צלצל! מד הערות עלה. 📱");
+      }
+      return;
+    }
     if (gameState.act !== 1) return;
     if (gameState.negotiating) {
       callBanner.classList.remove("hidden");
@@ -742,7 +805,7 @@ function openWhatsAppGroup(item) {
     }
   }, 7000);
 
-  phoneCloseBtn.onclick = () => 
+  phoneCloseBtn.onclick = () => {
     _groupActive = false;
     clearTimeout(scrollInterval);
     clearTimeout(missTimer);
@@ -752,6 +815,7 @@ function openWhatsAppGroup(item) {
 
 // ── משא ומתן AI עם רונית (שידה) ──────────────────────────────────────────
 function openRonitNegotiation(item) {
+  console.log("[openRonitNegotiation] called");
   gameState.negotiating = true;
   gameState.roniConvoHistory = [];
 
@@ -830,6 +894,7 @@ function openRonitNegotiation(item) {
         }, 800);
       }
     } catch (err) {
+      console.error("[Ronit] API error:", err);
       typingEl.remove();
       addChatBubble("מערכת", `⚠️ שגיאה: ${err.message}`, "ronit");
     } finally {
@@ -1009,6 +1074,15 @@ function closePhone() {
   document.getElementById("phone-home").classList.add("hidden");
   const chatBack = document.getElementById("chat-back-btn");
   if (chatBack) chatBack.classList.add("hidden");
+
+  gameState.negotiating = false;
+
+  choiceButtons.querySelectorAll("button, div").forEach(b => {
+    b.disabled = false;
+    b.style.opacity = "";
+    b.style.pointerEvents = "";
+    b.style.cursor = "";
+  });
 }
 
 // ── ניווט מסכי טלפון ────────────────────────────────────────────────────────
@@ -1212,6 +1286,25 @@ function triggerActTransition() {
   }, 4000);
 }
 
+// ── מסך הסבר פתיחת מחזה ב׳ ──────────────────────────────────────────────────
+function showAct2Intro() {
+  narrate(`
+    <strong>היום הראשון בבית 👶</strong><br><br>
+    התינוקת תישן ותתעורר מספר פעמים היום.
+    בכל פעם שהיא ישנה — בחרי פעולה אחת.<br><br>
+    <strong>מד הערות</strong> עולה כשמזיזים את העכבר מהר —
+    כשהוא מגיע ל-100% התינוקת מתעוררת.<br><br>
+    <strong>המשימות בצד:</strong> השלימי שאיבה, כביסה וטיפול עצמי
+    כדי לסיים את היום.<br><br>
+    <em>הזיזי את העכבר לאט מעל התינוקת כדי להרדים אותה.</em>
+  `);
+  setChoices([{
+    label: "מוכנה — מתחילים",
+    primary: true,
+    action: () => beginLullaby()
+  }]);
+}
+
 // ── מחזה ב׳ ─────────────────────────────────────────────────────────────────
 function beginAct2() {
   gameState.act = 2;
@@ -1219,6 +1312,8 @@ function beginAct2() {
   gameState.lullabyPhase = false;
   hudAct.textContent = "מחזה ב׳ — השגרה";
   updateHUD();
+  setRoomMood("night");
+  document.getElementById("panel-tasks").style.display = "flex";
 
   if (gameState.superstition) {
     applySuperstitionFate();
@@ -1227,8 +1322,7 @@ function beginAct2() {
     gameState.items.forEach(i => { i.inHouse = true; });
     renderRoom();
     renderBaby("sleeping");
-    narrate(`את בבית. חדר התינוקת מוכן.<br><br>התינוקת ישנה רגע — אבל היא עומדת להתעורר.<br><em>מתחיל היום הראשון.</em>`);
-    setTimeout(beginLullaby, 1500);
+    setTimeout(showAct2Intro, 800);
   }
 }
 
@@ -1270,7 +1364,7 @@ function unpackBox(item, boxEl) {
 
   if (document.querySelectorAll("[id^='box-']").length === 0) {
     narrate("כל הקופסאות רוקנו. החדר נראה כמו חדר תינוקת. הגב כואב.");
-    setTimeout(beginLullaby, 1200);
+    setTimeout(showAct2Intro, 1200);
   }
 }
 
@@ -1286,7 +1380,11 @@ function beginLullaby() {
   const babyEl = document.getElementById("room-baby");
   if (babyEl) babyEl.style.cursor = "pointer";
   if (babyEl) babyEl.style.pointerEvents = "auto";
-  narrate("😴 התינוקת ערה ועצבנית. הזיזי את העכבר <strong>לאט מאוד</strong> עד שתירדם...");
+  if (babyEl) babyEl.classList.add("lullaby");
+  narrate(`
+    😴 התינוקת ערה ועצבנית...<br><br>
+    <em>הזיזי את העכבר <strong>לאט מאוד</strong> מעל התינוקת עד שתירדם.</em>
+  `);
   beginStealthMode();
 }
 
@@ -1298,57 +1396,115 @@ function beginActionPhase() {
   gameState.babyMeter = 0;
   babyMeterFill.classList.remove("danger");
   babyMeterFill.style.width = "0%";
+  showSelfCareMenu();
+}
 
-  const cycleNum = gameState.sleepCycle + 1;
-  narrate(`התינוקת נרדמה 😴  חלון ${cycleNum} מתוך ${gameState.totalCycles} — בחרי פעולה אחת:`);
+function showSelfCareMenu() {
+  narrate("התינוקת ישנה 😴 בחרי מה לעשות עכשיו:");
 
-  setChoices([
+  const actions = [
     {
-      label: "🍼 שאבי חלב — הכנה לאחר כך (רועש!)",
-      action: () => {
-        increaseBabyMeter(25);
-        restoreSanity(3);
-        showToast("שאיבה הסתיימה. הכנת לאחר כך.");
-        if (!gameState.babyCried) endActionPhase();
-      }
+      id: "coffee",
+      img: "assets/ActionCoffee.png",
+      label: "☕ קפה",
+      sub: "+8 שפיות",
+      quiet: true,
+      action: () => { restoreSanity(8); showToast("+8 שפיות — חמימות בכפות הידיים."); completeTask("selfcare"); endActionPhase(); }
     },
     {
-      label: "🧺 כבסי — לוגיסטיקה (רועש!)",
-      action: () => {
-        increaseBabyMeter(20);
-        restoreSanity(2);
-        showToast("מחזור הכביסה רץ.");
-        if (!gameState.babyCried) endActionPhase();
-      }
+      id: "book",
+      img: "assets/ActionBook.png",
+      label: "📖 לקרוא",
+      sub: "+5 שפיות",
+      quiet: true,
+      action: () => { restoreSanity(5); showToast("+5 שפיות — נזכרת מי את."); completeTask("selfcare"); endActionPhase(); }
     },
     {
-      label: "☕ הכיני קפה — רגע לעצמך (שקט)",
-      action: () => {
-        restoreSanity(8);
-        showToast("+8 שפיות — חמימות בכפות הידיים.");
-        endActionPhase();
-      }
+      id: "pump",
+      img: "assets/ActionPump.png",
+      label: "🍼 שאיבה",
+      sub: "לוגיסטיקה, שקט",
+      quiet: true,
+      action: () => { restoreSanity(2); showToast("שאיבה הסתיימה."); completeTask("pump"); endActionPhase(); }
     },
     {
-      label: "📖 קראי עמוד — רגע לעצמך (שקט)",
-      action: () => {
-        restoreSanity(5);
-        showToast("+5 שפיות — נזכרת מי את.");
-        endActionPhase();
-      }
+      id: "laundry",
+      img: "assets/ActionLaundry.png",
+      label: "🧺 כביסה",
+      sub: "לוגיסטיקה, רועש!",
+      quiet: false,
+      action: () => { increaseBabyMeter(20); showToast("מחזור הכביסה. כמובן שדווקא עכשיו."); completeTask("laundry"); endActionPhase(); }
     },
-    {
-      label: "📞 התקשרי לאוריאל",
-      action: () => {
-        openPhoneCall();
-        const origClose = phoneCloseBtn.onclick;
-        phoneCloseBtn.onclick = () => {
-          if (origClose) origClose();
-          endActionPhase();
-        };
-      }
-    }
-  ]);
+  ];
+
+  choiceButtons.innerHTML = "";
+  const grid = document.createElement("div");
+  grid.style.cssText = `
+    display: flex;
+    gap: 0.6rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: 0.4rem 0;
+  `;
+
+  actions.forEach(a => {
+    const card = document.createElement("div");
+    card.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.3rem;
+      background: white;
+      border: 2px solid ${a.quiet ? "var(--sage)" : "var(--rose)"};
+      border-radius: 16px;
+      padding: 0.6rem 0.8rem;
+      cursor: pointer;
+      width: 80px;
+      transition: transform 0.15s, box-shadow 0.15s;
+      direction: rtl;
+    `;
+    card.innerHTML = `
+      <img src="${a.img}" style="width:48px;height:48px;object-fit:contain;" alt="${a.label}"/>
+      <span style="font-size:0.75rem;font-weight:700;color:var(--charcoal);text-align:center;">${a.label}</span>
+      <span style="font-size:0.65rem;color:var(--muted);text-align:center;">${a.sub}</span>
+    `;
+    card.addEventListener("mouseenter", () => {
+      card.style.transform = "translateY(-3px)";
+      card.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
+    });
+    card.addEventListener("mouseleave", () => {
+      card.style.transform = "";
+      card.style.boxShadow = "";
+    });
+    card.addEventListener("click", () => {
+      grid.querySelectorAll("div").forEach(c => {
+        c.style.opacity = "0.5";
+        c.style.pointerEvents = "none";
+      });
+      a.action();
+    });
+    grid.appendChild(card);
+  });
+
+  choiceButtons.appendChild(grid);
+}
+
+// ── סימון משימה כבוצעה ───────────────────────────────────────────────────────
+function completeTask(taskId) {
+  if (gameState.tasksCompleted[taskId]) return;
+  gameState.tasksCompleted[taskId] = true;
+
+  const el = document.getElementById("task-" + taskId);
+  if (el) {
+    el.classList.add("done");
+    el.querySelector(".task-check").textContent = "✓";
+  }
+
+  const allDone = Object.values(gameState.tasksCompleted).every(v => v);
+  if (allDone) {
+    showToast("כל משימות היום הושלמו! 🌟");
+    setTimeout(triggerEnding, 1500);
+  }
 }
 
 // ── סיום שלב פעולה ────────────────────────────────────────────────────────────
@@ -1356,15 +1512,11 @@ function endActionPhase() {
   gameState.sleepCycle++;
   updateHUD();
 
-  if (gameState.sleepCycle >= gameState.totalCycles) {
-    triggerEnding();
-  } else {
-    narrate("התינוקת מתעוררת... 👶");
-    setTimeout(() => {
-      drainSanity(2);
-      beginLullaby();
-    }, 1500);
-  }
+  narrate("התינוקת מתעוררת... 👶");
+  setTimeout(() => {
+    drainSanity(2);
+    beginLullaby();
+  }, 1500);
 }
 
 // ── מכניזם עכבר סמוי — מחזה ב׳ ─────────────────────────────────────────────
@@ -1382,6 +1534,16 @@ function isMouseOverBaby(e) {
 
 function beginStealthMode() {
   babyMeterCont.style.display = "flex";
+  babyMeterCont.style.position = "absolute";
+  babyMeterCont.style.top = "auto";
+  babyMeterCont.style.bottom = "4px";
+  babyMeterCont.style.left = "50%";
+  babyMeterCont.style.transform = "translateX(-50%)";
+  babyMeterCont.style.width = "40%";
+  babyMeterCont.style.opacity = "0.6";
+  babyMeterCont.style.zIndex = "10";
+  const wavesEl = document.getElementById("baby-waves");
+  if (wavesEl) wavesEl.classList.add("active");
   if (!gameState.stealthListenerAdded) {
     gameState.stealthListenerAdded = true;
     document.addEventListener("mousemove", stealthMouseHandler);
@@ -1404,6 +1566,7 @@ function stealthMouseHandler(e) {
     if (overBaby && speed < 0.8) {
       gameState.babyMeter = Math.max(0, gameState.babyMeter - 2.5);
       babyMeterFill.style.width = gameState.babyMeter + "%";
+      updateBabyWaves();
       if (gameState.babyMeter <= 30) babyMeterFill.classList.remove("danger");
       if (gameState.babyMeter === 0) {
         gameState.lullabyPhase = false;
@@ -1412,6 +1575,7 @@ function stealthMouseHandler(e) {
         const babyEl = document.getElementById("room-baby");
         if (babyEl) babyEl.style.pointerEvents = "none";
         if (babyEl) babyEl.style.cursor = "default";
+        if (babyEl) babyEl.classList.remove("lullaby");
         setTimeout(beginActionPhase, 800);
       }
     } else if (speed > 1.5) {
@@ -1436,9 +1600,32 @@ function stealthMouseHandler(e) {
   lastTime = now;
 }
 
+function updateBabyWaves() {
+  const babyEl = document.getElementById("room-baby");
+  const wavesEl = document.getElementById("baby-waves");
+  if (!babyEl || !wavesEl) return;
+
+  const container = document.getElementById("room-view");
+  const cr = container.getBoundingClientRect();
+  const br = babyEl.getBoundingClientRect();
+
+  wavesEl.style.left = (br.left - cr.left + br.width / 2) + "px";
+  wavesEl.style.top  = (br.top  - cr.top  + br.height / 2) + "px";
+
+  const scale = 0.5 + (gameState.babyMeter / 100) * 1.5;
+  const color = gameState.babyMeter > 70
+    ? "rgba(201,80,80,0.7)"
+    : "rgba(138,171,132,0.6)";
+  wavesEl.querySelectorAll(".wave-ring").forEach(ring => {
+    ring.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    ring.style.borderColor = color;
+  });
+}
+
 function increaseBabyMeter(amount) {
   gameState.babyMeter = Math.min(100, gameState.babyMeter + amount);
   babyMeterFill.style.width = gameState.babyMeter + "%";
+  if (gameState.act === 2) updateBabyWaves();
 
   if (gameState.babyMeter > 70) {
     babyMeterFill.classList.add("danger");
@@ -1453,26 +1640,29 @@ function increaseBabyMeter(amount) {
 }
 
 function triggerBabyCrying() {
-  renderBaby("crying");
-  gameState.babyCried = true;
   gameState.stealthActive = false;
   gameState.lullabyPhase = false;
+  gameState.babyCried = true;
+
+  renderBaby("crying");
+  document.getElementById("room-crying-overlay")?.classList.add("active");
   $("room-view").style.pointerEvents = "none";
   drainSanity(15);
-  narrate(`<strong>😭 התינוקת התעוררה.</strong><br>הבכי ממלא את החדר. עצמת עיניים לשתי שניות בדיוק, ואז הלכת אליה. −15 שפיות.`);
-  setChoices([
-    {
-      label: "הרגיעי אותה והמשיכי",
-      primary: true,
-      action: () => {
-        renderBaby("sleeping");
-        gameState.babyMeter = 0;
-        babyMeterFill.style.width = "0%";
-        $("room-view").style.pointerEvents = "";
-        beginLullaby();
-      }
+
+  narrate(`<strong>😭 התינוקת התעוררה.</strong><br>הבכי ממלא את החדר. −15 שפיות.`);
+  setChoices([{
+    label: "הרגיעי אותה והרדימי שוב",
+    primary: true,
+    action: () => {
+      gameState.babyMeter = 0;
+      babyMeterFill.style.width = "0%";
+      babyMeterFill.classList.remove("danger");
+      document.getElementById("room-crying-overlay")?.classList.remove("active");
+      $("room-view").style.pointerEvents = "";
+      renderBaby("sleeping");
+      beginLullaby();
     }
-  ]);
+  }]);
 }
 
 // ── סיומות ───────────────────────────────────────────────────────────────────
@@ -1480,6 +1670,8 @@ function triggerEnding() {
   document.removeEventListener("mousemove", stealthMouseHandler);
   gameState.stealthActive = false;
   babyMeterCont.style.display = "none";
+  const wavesEl = document.getElementById("baby-waves");
+  if (wavesEl) wavesEl.classList.remove("active");
 
   const sanityLine = gameState.sanity >= 70
     ? "את עייפה. אבל את בסדר. ממש בסדר."
@@ -1508,6 +1700,8 @@ function triggerEnding() {
 function triggerBadEnding() {
   document.removeEventListener("mousemove", stealthMouseHandler);
   gameState.stealthActive = false;
+  const wavesEl = document.getElementById("baby-waves");
+  if (wavesEl) wavesEl.classList.remove("active");
   actFade.classList.add("active");
   actFadeText.innerHTML = `
     שפיות: 0%<br><br>
@@ -1555,7 +1749,13 @@ function init() {
       if (badge) badge.classList.add("hidden");
       document.getElementById("phone-home").classList.add("hidden");
       if (contact === "group") {
+        if (gameState.act === 2) {
+          showToast("הקבוצה יכולה לחכות — התינוקת לא. 👶");
+          return;
+        }
+        document.getElementById("phone-home").classList.add("hidden");
         openWhatsAppGroup(null);
+        return;
       } else if (contact === "dad") {
         openDadCall();
       } else {
