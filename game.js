@@ -421,6 +421,82 @@ function showItemMenu(item) {
   setChoices(choices);
 }
 
+// ── הצעת הלוואה ממשפחה ──────────────────────────────────────────────────────
+function offerLoan() {
+  const canMom = !gameState.loanFromMom;
+  const canDad = !gameState.loanFromDad;
+
+  if (!canMom && !canDad) {
+    showToast("כבר קיבלת עזרה מכולם. את לבד עם זה.");
+    return;
+  }
+
+  narrate(`נגמר הכסף. אבל אולי מישהו יכול לעזור?`);
+
+  const choices = [];
+
+  if (canMom) {
+    if (gameState.superstition) {
+      choices.push({
+        label: "📞 בקשי מאמא (300 ₪, ללא שיפוט)",
+        action: () => {
+          gameState.loanFromMom = true;
+          gameState.budget += 300;
+          updateHUD();
+          showToast('+300 ₪ מאמא. "שיהיה לך לבריאות אהובתי." 💛');
+          narrate(`אמא העבירה 300 ₪ בלי לשאול שאלות.<br><em>"תשמרי על עצמך. זה מה שחשוב."</em>`);
+          setTimeout(showMainItemList, 1800);
+        }
+      });
+    } else {
+      choices.push({
+        label: "📞 בקשי מאמא (500 ₪, עם הערות)",
+        action: () => {
+          gameState.loanFromMom = true;
+          gameState.budget += 500;
+          drainSanity(8);
+          updateHUD();
+          showToast("+500 ₪ מאמא. −8 שפיות 💸");
+          narrate(`אמא העבירה 500 ₪.<br><em>"כבר אמרתי לך לחסוך. אבל מה, את שומעת לי פעם?"</em><br><br>היא צודקת. זה עולה משהו לשמוע את זה.`);
+          setTimeout(showMainItemList, 2200);
+        }
+      });
+    }
+  }
+
+  if (canDad) {
+    if (gameState.superstition) {
+      choices.push({
+        label: "📞 בקשי מאבא (500 ₪, עם הערות)",
+        action: () => {
+          gameState.loanFromDad = true;
+          gameState.budget += 500;
+          drainSanity(5);
+          updateHUD();
+          showToast("+500 ₪ מאבא. −5 שפיות 💸");
+          narrate(`אבא העביר 500 ₪.<br><em>"את יודעת שהייתי מעדיף שתתכנני קצת יותר קדימה... אבל מה עושים."</em>`);
+          setTimeout(showMainItemList, 2000);
+        }
+      });
+    } else {
+      choices.push({
+        label: "📞 בקשי מאבא (300 ₪, ללא שיפוט)",
+        action: () => {
+          gameState.loanFromDad = true;
+          gameState.budget += 300;
+          updateHUD();
+          showToast('+300 ₪ מאבא. "תמיד כאן בשבילך." 🤍');
+          narrate(`אבא העביר 300 ₪ בלי לחשוב פעמיים.<br><em>"שיהיה. את שלי."</em>`);
+          setTimeout(showMainItemList, 1800);
+        }
+      });
+    }
+  }
+
+  choices.push({ label: "← חזרה — אסתדר לבד", action: showMainItemList });
+  setChoices(choices);
+}
+
 // ── רשימת פריטים ראשית ──────────────────────────────────────────────────────
 function showMainItemList() {
   const remaining = gameState.items.filter(i => !i.isSecured);
@@ -430,12 +506,27 @@ function showMainItemList() {
     return;
   }
 
-  narrate(`נותרו לך <strong>${gameState.budget.toLocaleString()} ₪</strong> ועוד ${remaining.length} פריט${remaining.length > 1 ? "ים" : ""} להשיג. על מה עובדים?`);
-  setChoices(remaining.map(item => ({
+  const canGetLoan = !gameState.loanFromMom || !gameState.loanFromDad;
+  const budgetWarning = gameState.budget === 0 && canGetLoan
+    ? `<br><small style="color:#e07030;">אין תקציב — אפשר לבקש עזרה ממשפחה</small>`
+    : "";
+
+  narrate(`נותרו לך <strong>${gameState.budget.toLocaleString()} ₪</strong> ועוד ${remaining.length} פריט${remaining.length > 1 ? "ים" : ""} להשיג. על מה עובדים?${budgetWarning}`);
+
+  const choices = remaining.map(item => ({
     label: `${item.emoji} ${item.name}`,
     primary: true,
     action: () => showItemMenu(item)
-  })));
+  }));
+
+  if (gameState.budget === 0 && canGetLoan) {
+    choices.push({
+      label: "📞 בקשי עזרה כלכלית ממשפחה",
+      action: offerLoan
+    });
+  }
+
+  setChoices(choices);
 }
 
 // ── סצנת פתיחה ──────────────────────────────────────────────────────────────
