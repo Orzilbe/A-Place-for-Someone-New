@@ -379,6 +379,7 @@ function showItemMenu(item) {
       action: () => {
         if (gameState.budget < item.costNew) {
           showToast("אין מספיק תקציב לזה. 😬");
+          narrate(`<strong>${item.emoji} ${item.name}</strong><br><em>חדש עולה ${item.costNew.toLocaleString()} ₪ ואין מספיק בתקציב.</em><br><small style="color:var(--muted);">אולי יד שנייה? או חזרי לרשימה לבקש עזרה ממשפחה.</small>`);
           return;
         }
         if (gameState.budget < 300 && item.costNew > 400) {
@@ -421,80 +422,154 @@ function showItemMenu(item) {
   setChoices(choices);
 }
 
-// ── הצעת הלוואה ממשפחה ──────────────────────────────────────────────────────
-function offerLoan() {
-  const canMom = !gameState.loanFromMom;
-  const canDad = !gameState.loanFromDad;
+// ── שיחת הלוואה עם הורה ─────────────────────────────────────────────────────
+function openLoanChat(contact) {
+  const isMom = contact === "mom";
+  const name   = isMom ? "אמא" : "אבא";
+  const avatar = isMom ? "👩" : "👨";
 
-  if (!canMom && !canDad) {
-    showToast("כבר קיבלת עזרה מכולם. את לבד עם זה.");
-    return;
-  }
-
-  narrate(`נגמר הכסף. אבל אולי מישהו יכול לעזור?`);
-
-  const choices = [];
-
-  if (canMom) {
+  let systemPrompt;
+  if (isMom) {
     if (gameState.superstition) {
-      choices.push({
-        label: "📞 בקשי מאמא (300 ₪, ללא שיפוט)",
-        action: () => {
-          gameState.loanFromMom = true;
-          gameState.budget += 300;
-          updateHUD();
-          showToast('+300 ₪ מאמא. "שיהיה לך לבריאות אהובתי." 💛');
-          narrate(`אמא העבירה 300 ₪ בלי לשאול שאלות.<br><em>"תשמרי על עצמך. זה מה שחשוב."</em>`);
-          setTimeout(showMainItemList, 1800);
-        }
-      });
+      systemPrompt = `
+את האמא של השחקנית. הבת שלך הקשיבה לך בתחילת ההריון ועשתה מה שביקשת.
+את גאה בה מאוד ואוהבת אותה ללא תנאי.
+היא מתקשרת כי אין לה כסף לסיים לקנות ציוד לתינוקת.
+עני בחמימות, תציעי לעזור כלכלית מיד בלי שיפוט.
+הסכום שתציעי: בין 300 ל-600 שקל, לפי שיקול דעתך לפי תחושת השיחה.
+אחרי שהשחקנית מסכימה — סיימי את השיחה בחמימות.
+כשסוכם — החזירי JSON: { "text": "...", "loanAmount": <מספר>, "loanClosed": true }
+כל עוד לא סוכם: { "text": "...", "loanAmount": null, "loanClosed": false }
+כתבי בעברית יומיומית וחמה. פני בלשון נקבה.
+      `.trim();
     } else {
-      choices.push({
-        label: "📞 בקשי מאמא (500 ₪, עם הערות)",
-        action: () => {
-          gameState.loanFromMom = true;
-          gameState.budget += 500;
-          drainSanity(8);
-          updateHUD();
-          showToast("+500 ₪ מאמא. −8 שפיות 💸");
-          narrate(`אמא העבירה 500 ₪.<br><em>"כבר אמרתי לך לחסוך. אבל מה, את שומעת לי פעם?"</em><br><br>היא צודקת. זה עולה משהו לשמוע את זה.`);
-          setTimeout(showMainItemList, 2200);
-        }
-      });
+      systemPrompt = `
+את האמא של השחקנית. הבת שלך לא הקשיבה לך בתחילת ההריון.
+את אוהבת אותה אבל לא יכולה שלא להגיד "אמרתי לך".
+היא מתקשרת כי אין לה כסף לסיים לקנות ציוד לתינוקת.
+עני בשיחה — תעזרי בסוף אבל תוסיפי הערה אחת על כך שלא הקשיבה.
+הסכום שתציעי: בין 300 ל-500 שקל.
+אחרי שהשחקנית מסכימה — סיימי עם הערה קטנה ואהבה.
+כשסוכם — החזירי JSON: { "text": "...", "loanAmount": <מספר>, "loanClosed": true }
+כל עוד לא סוכם: { "text": "...", "loanAmount": null, "loanClosed": false }
+כתבי בעברית יומיומית. פני בלשון נקבה.
+      `.trim();
+    }
+  } else {
+    if (gameState.superstition) {
+      systemPrompt = `
+אתה האבא של השחקנית. הבת שלך מתקשרת כי אין לה כסף לסיים לקנות ציוד לתינוקת.
+אתה אוהב אותה אבל קצת מופתע שהיא צריכה עזרה כלכלית.
+עני בחמימות אבל עם קצת שאלות — "כמה בדיוק צריך? על מה הכסף הלך?"
+בסוף תעזור — הסכום: בין 200 ל-500 שקל.
+כשסוכם — החזירי JSON: { "text": "...", "loanAmount": <מספר>, "loanClosed": true }
+כל עוד לא סוכם: { "text": "...", "loanAmount": null, "loanClosed": false }
+כתבי בעברית פשוטה. פנה בלשון נקבה.
+      `.trim();
+    } else {
+      systemPrompt = `
+אתה האבא של השחקנית. הבת שלך מתקשרת כי אין לה כסף לסיים לקנות ציוד לתינוקת.
+אתה נותן בלי לשאול שאלות ובלי שיפוט. זו הבת שלך.
+עני בחום ובקצרה — משפט תומך ומציע עזרה מיד.
+הסכום: בין 300 ל-600 שקל לפי תחושת השיחה.
+כשסוכם — החזירי JSON: { "text": "...", "loanAmount": <מספר>, "loanClosed": true }
+כל עוד לא סוכם: { "text": "...", "loanAmount": null, "loanClosed": false }
+כתבי בעברית פשוטה וקצרה. פנה בלשון נקבה.
+      `.trim();
     }
   }
 
-  if (canDad) {
-    if (gameState.superstition) {
-      choices.push({
-        label: "📞 בקשי מאבא (500 ₪, עם הערות)",
-        action: () => {
-          gameState.loanFromDad = true;
-          gameState.budget += 500;
-          drainSanity(5);
+  const homeEl = document.getElementById("phone-home");
+  if (homeEl) homeEl.classList.add("hidden");
+  phoneContent.classList.remove("hidden");
+  phoneInputArea.classList.remove("hidden");
+  phoneAppName.textContent = `${avatar} ${name}`;
+  $("phone-status-bar").style.background = "#3a3a3a";
+  phoneContent.innerHTML = "";
+  phoneSendBtn.onclick = null;
+  phoneTextInput.onkeydown = null;
+  phoneOverlay.classList.remove("hidden");
+
+  const history = [];
+
+  const opening = isMom ? "שלום אהובתי, מה קרה?" : "היי מה שלומך? הכל בסדר?";
+  addChatBubble(name, opening, "ronit");
+  history.push({ role: "model", text: opening });
+
+  const chatBackBtn = document.getElementById("chat-back-btn");
+  if (chatBackBtn) {
+    chatBackBtn.classList.remove("hidden");
+    chatBackBtn.onclick = () => {
+      chatBackBtn.classList.add("hidden");
+      closePhone();
+      showMainItemList();
+    };
+  }
+
+  async function sendMessage() {
+    const msg = phoneTextInput.value.trim();
+    if (!msg) return;
+    phoneTextInput.value = "";
+    phoneTextInput.disabled = true;
+    phoneSendBtn.disabled = true;
+
+    addChatBubble("את", msg, "player");
+    history.push({ role: "user", text: msg });
+    const typingEl = addTypingIndicator();
+
+    try {
+      const fullHistory = history
+        .slice(0, -1)
+        .map(m => `${m.role === "user" ? "שחקנית" : name}: ${m.text}`)
+        .join("\n");
+      const contextualMessage = fullHistory
+        ? `שיחה קודמת:\n${fullHistory}\n\nהודעה אחרונה: ${msg}`
+        : msg;
+
+      const raw = await callGemini(contextualMessage, systemPrompt);
+      typingEl.remove();
+
+      let parsed;
+      try {
+        const cleaned = raw.replace(/```json|```/g, "").trim();
+        parsed = JSON.parse(cleaned);
+      } catch {
+        parsed = { text: raw, loanAmount: null, loanClosed: false };
+      }
+
+      history.push({ role: "model", text: parsed.text });
+      addChatBubble(name, parsed.text, "ronit");
+
+      if (parsed.loanClosed && parsed.loanAmount) {
+        const amount = parsed.loanAmount;
+        if (isMom) gameState.loanFromMom = true;
+        else        gameState.loanFromDad = true;
+
+        if  (isMom && !gameState.superstition) drainSanity(8);
+        if  (isMom &&  gameState.superstition) restoreSanity(3);
+        if (!isMom &&  gameState.superstition) drainSanity(5);
+        if (!isMom && !gameState.superstition) restoreSanity(2);
+
+        setTimeout(() => {
+          closePhone();
+          gameState.budget += amount;
           updateHUD();
-          showToast("+500 ₪ מאבא. −5 שפיות 💸");
-          narrate(`אבא העביר 500 ₪.<br><em>"את יודעת שהייתי מעדיף שתתכנני קצת יותר קדימה... אבל מה עושים."</em>`);
-          setTimeout(showMainItemList, 2000);
-        }
-      });
-    } else {
-      choices.push({
-        label: "📞 בקשי מאבא (300 ₪, ללא שיפוט)",
-        action: () => {
-          gameState.loanFromDad = true;
-          gameState.budget += 300;
-          updateHUD();
-          showToast('+300 ₪ מאבא. "תמיד כאן בשבילך." 🤍');
-          narrate(`אבא העביר 300 ₪ בלי לחשוב פעמיים.<br><em>"שיהיה. את שלי."</em>`);
-          setTimeout(showMainItemList, 1800);
-        }
-      });
+          showToast(`+${amount.toLocaleString()} ₪ מ${name}. 💛`);
+          showMainItemList();
+        }, 1200);
+      }
+    } catch (err) {
+      typingEl.remove();
+      addChatBubble("מערכת", `⚠️ שגיאה: ${err.message}`, "ronit");
+    } finally {
+      phoneTextInput.disabled = false;
+      phoneSendBtn.disabled = false;
+      phoneTextInput.focus();
     }
   }
 
-  choices.push({ label: "← חזרה — אסתדר לבד", action: showMainItemList });
-  setChoices(choices);
+  phoneSendBtn.onclick = sendMessage;
+  phoneTextInput.onkeydown = e => { if (e.key === "Enter") sendMessage(); };
 }
 
 // ── רשימת פריטים ראשית ──────────────────────────────────────────────────────
@@ -507,8 +582,14 @@ function showMainItemList() {
   }
 
   const canGetLoan = !gameState.loanFromMom || !gameState.loanFromDad;
-  const budgetWarning = gameState.budget === 0 && canGetLoan
-    ? `<br><small style="color:#e07030;">אין תקציב — אפשר לבקש עזרה ממשפחה</small>`
+  const unsecured = remaining.filter(i =>
+    gameState.budget < i.costUsed || gameState.budget < i.costNew
+  );
+  const cantAffordAnything = remaining.length > 0 &&
+    unsecured.length === remaining.length && canGetLoan;
+
+  const budgetWarning = cantAffordAnything
+    ? `<br><small style="color:#e07030;">נראה שהתקציב לא מספיק — אפשר לבקש עזרה ממשפחה</small>`
     : "";
 
   narrate(`נותרו לך <strong>${gameState.budget.toLocaleString()} ₪</strong> ועוד ${remaining.length} פריט${remaining.length > 1 ? "ים" : ""} להשיג. על מה עובדים?${budgetWarning}`);
@@ -519,11 +600,11 @@ function showMainItemList() {
     action: () => showItemMenu(item)
   }));
 
-  if (gameState.budget === 0 && canGetLoan) {
-    choices.push({
-      label: "📞 בקשי עזרה כלכלית ממשפחה",
-      action: offerLoan
-    });
+  if (cantAffordAnything) {
+    const canMom = !gameState.loanFromMom;
+    const canDad = !gameState.loanFromDad;
+    if (canMom) choices.push({ label: "📞 התקשרי לאמא",  action: () => openLoanChat("mom") });
+    if (canDad) choices.push({ label: "📞 התקשרי לאבא",  action: () => openLoanChat("dad") });
   }
 
   setChoices(choices);
