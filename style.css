@@ -305,7 +305,7 @@ body {
 
 /* ─── Act Fade Overlay ─────────────────────────────────── */
 #act-fade-overlay {
-  position: absolute;
+  position: fixed !important;
   inset: 0;
   background: #000;
   display: flex;
@@ -313,8 +313,8 @@ body {
   justify-content: center;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 1.8s ease;
-  z-index: 50;
+  transition: opacity 2.4s ease;
+  z-index: 99999 !important;
 }
 
 #act-fade-overlay.active {

@@ -4,16 +4,19 @@
 
 // ── אסטים תינוקת ──────────────────────────────────────────────
 const BABY_ASSETS = {
-  sleeping: "assets/SleepingBaby.png",
-  crying:   "assets/CryingBaby.png",
+  sleepingNew:  "assets/SleepingBabyInNewCrib.png",
+  sleepingUsed: "assets/SleepingBabyInSecond-handCrib.png",
+  crying:       "assets/CryingBaby.png",
 };
 
 // ── מיפוי אסטים ───────────────────────────────────────────────
 const ASSETS = {
   room: "assets/EmptyBabyRoom.png",
   crib: {
-    new:  "assets/NewCrib.png",
-    used: "assets/Second-handCrib.png",
+    new:          "assets/NewCrib.png",
+    used:         "assets/Second-handCrib.png",
+    newSleeping:  "assets/SleepingBabyInNewCrib.png",
+    usedSleeping: "assets/SleepingBabyInSecond-handCrib.png",
   },
   dresser: {
     new:  "assets/NewDresser.png",
@@ -100,6 +103,16 @@ function renderItem(item) {
     src = assetGroup.used;
   }
 
+  if (item.id === "crib") {
+    const isAct2     = typeof gameState !== "undefined" && gameState.act === 2;
+    const isSleeping = isAct2 && !gameState.lullabyPhase && gameState.stealthActive;
+    if (isSleeping) {
+      src = item._worn ? assetGroup.usedSleeping : assetGroup.newSleeping;
+    } else {
+      src = item._worn ? assetGroup.used : assetGroup.new;
+    }
+  }
+
   // Use player-saved position if available, otherwise fall back to defaults
   const saved = (typeof gameState !== "undefined" && gameState.itemPositions)
     ? gameState.itemPositions[item.id]
@@ -119,8 +132,8 @@ function renderItem(item) {
       pointer-events: auto;
       cursor: grab;
       opacity: 0;
-      transform: scale(0.88) translateY(12px);
-      transition: opacity 0.4s ease, transform 0.4s ease;
+      transform: scale(0.8) translateY(20px);
+      transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.34,1.56,0.64,1);
     `;
     container.appendChild(el);
     _attachItemHandles(el, item, container);
@@ -292,44 +305,63 @@ function renderBaby(state) {
   const container = document.getElementById("room-view");
   if (!container) return;
 
-  let babyEl = document.getElementById("room-baby");
+  const crib = (typeof gameState !== "undefined")
+    ? gameState.items.find(i => i.id === "crib")
+    : null;
 
-  if (state === "hidden") {
+  if (state === "sleeping") {
+    // Hide the separate baby element — baby appears inside the crib asset
+    const babyEl = document.getElementById("room-baby");
     if (babyEl) babyEl.style.display = "none";
+
+    // Swap crib to sleeping variant
+    if (crib && crib.inHouse) {
+      const el = document.getElementById("room-item-crib");
+      if (el) el.src = crib._worn
+        ? ASSETS.crib.usedSleeping
+        : ASSETS.crib.newSleeping;
+    }
     return;
   }
 
-  if (!babyEl) {
-    babyEl = document.createElement("img");
-    babyEl.id = "room-baby";
-    babyEl.style.cssText = `
-      position: absolute;
-      object-fit: contain;
-      z-index: 2;
-      pointer-events: none;
-      transition: opacity 0.6s ease;
-    `;
-    container.appendChild(babyEl);
-  }
-
-  babyEl.style.left    = "4%";
-  babyEl.style.bottom  = "4%";
-  babyEl.style.width   = "16%";
-  babyEl.style.display = "block";
-  babyEl.style.opacity = "1";
-
-  const newSrc = BABY_ASSETS[state];
-  if (babyEl.src !== newSrc && newSrc) {
-    babyEl.style.opacity = "0";
-    setTimeout(() => {
-      babyEl.src = newSrc;
-      babyEl.style.opacity = "1";
-    }, 300);
-  }
-
   if (state === "crying") {
+    // Restore empty crib asset
+    if (crib && crib.inHouse) {
+      const el = document.getElementById("room-item-crib");
+      if (el) el.src = crib._worn
+        ? ASSETS.crib.used
+        : ASSETS.crib.new;
+    }
+
+    // Show crying baby outside crib
+    let babyEl = document.getElementById("room-baby");
+    if (!babyEl) {
+      babyEl = document.createElement("img");
+      babyEl.id = "room-baby";
+      babyEl.style.cssText = `
+        position: absolute;
+        object-fit: contain;
+        z-index: 2;
+        pointer-events: none;
+        transition: opacity 0.6s ease, bottom 0.4s ease, left 0.4s ease;
+      `;
+      container.appendChild(babyEl);
+    }
+    babyEl.src            = BABY_ASSETS.crying;
+    babyEl.style.display  = "block";
+    babyEl.style.opacity  = "1";
+    babyEl.style.left     = "3%";
+    babyEl.style.bottom   = "18%";
+    babyEl.style.width    = "14%";
     babyEl.classList.add("baby-crying");
-  } else {
-    babyEl.classList.remove("baby-crying");
+    babyEl.classList.remove("lullaby");
+    return;
+  }
+
+  if (state === "hidden") {
+    const babyEl = document.getElementById("room-baby");
+    if (babyEl) babyEl.style.display = "none";
+    // Restore empty crib
+    if (crib && crib.inHouse) renderItem(crib);
   }
 }
