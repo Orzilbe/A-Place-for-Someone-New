@@ -1,4 +1,4 @@
-const API_KEY = "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";
+const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 async function callGemini(userMessage, systemPrompt) {
