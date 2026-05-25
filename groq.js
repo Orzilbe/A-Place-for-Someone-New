@@ -1,12 +1,8 @@
-const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-
 async function callGemini(userMessage, systemPrompt) {
-  const res = await fetch(GROQ_URL, {
+  const res = await fetch("/api/groq", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${API_KEY}`
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       model: "llama-3.3-70b-versatile",
