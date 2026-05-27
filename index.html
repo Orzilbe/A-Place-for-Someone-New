@@ -7,6 +7,35 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+
+  <!-- Google Analytics 4 -->
+  <script>
+    const GA_ID = 'G-SN2CH626FL';
+    (function() {
+      const s = document.createElement('script');
+      s.async = true;
+      s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+      document.head.appendChild(s);
+    })();
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', GA_ID);
+
+    const _gaT0 = Date.now();
+    document.addEventListener('click', function() {
+      gtag('event', 'session_start');
+    }, { once: true });
+    window.addEventListener('pagehide', function() {
+      gtag('event', 'session_duration', { value: Math.round((Date.now() - _gaT0) / 1000) });
+    });
+    document.addEventListener('DOMContentLoaded', function() {
+      const phoneEl = document.getElementById('phone-overlay');
+      if (phoneEl) new MutationObserver(function() {
+        if (!phoneEl.classList.contains('hidden')) gtag('event', 'phone_opened');
+      }).observe(phoneEl, { attributes: true, attributeFilter: ['class'] });
+    });
+  </script>
 </head>
 <body>
 

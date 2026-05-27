@@ -766,6 +766,7 @@ function startOpeningScene() {
 
 // ── שבועות אחרונים ─────────────────────────────────────────────────────────────────
 function beginAct1() {
+  if (typeof gtag !== 'undefined') gtag('event', 'game_start');
   gameState.act = 1;
   hudAct.textContent = "שבועות אחרונים";
   renderBaby("hidden");
@@ -1216,6 +1217,7 @@ function openRonitNegotiation(item) {
       }
 
       if (parsed.dealClosed && parsed.agreedPrice) {
+        if (typeof gtag !== 'undefined') gtag('event', 'deal_closed', { item: item.name, price: parsed.agreedPrice });
         const price = parsed.agreedPrice;
         if (parsed.leaveOutside) {
           showToast("רונית תשאיר את השידה מחוץ לבניין שלה. 🏠");
@@ -1322,6 +1324,7 @@ function openHadarNegotiation() {
       }
 
       if (parsed.dealClosed && parsed.agreedPrice) {
+        if (typeof gtag !== 'undefined') gtag('event', 'deal_closed', { item: item.name, price: parsed.agreedPrice });
         const price = parsed.agreedPrice;
         gameState.negotiating = false;
         setTimeout(() => {
@@ -1616,6 +1619,7 @@ async function openDadCall() {
 
 // ── מעבר בין מחזות ──────────────────────────────────────────────────────────
 function triggerActTransition() {
+  if (typeof gtag !== 'undefined') gtag('event', 'act_complete', { act: 1 });
   clearTimeout(gameState.callTimer);
   actFade.classList.add("active");
 
@@ -1993,6 +1997,7 @@ function increaseBabyMeter(amount) {
 }
 
 function triggerBabyCrying() {
+  if (typeof gtag !== 'undefined') gtag('event', 'baby_cried');
   gameState.stealthActive = false;
   gameState.lullabyPhase = false;
   gameState.babyCried = true;
@@ -2021,6 +2026,7 @@ function triggerBabyCrying() {
 
 // ── סיומות ───────────────────────────────────────────────────────────────────
 function triggerEnding() {
+  if (typeof gtag !== 'undefined') { gtag('event', 'act_complete', { act: 2 }); gtag('event', 'game_end', { outcome: 'good' }); }
   closePhone();
   setChoices([]);
   actFade.style.zIndex = "9999";
@@ -2102,6 +2108,7 @@ function triggerEnding() {
 }
 
 function triggerBadEnding() {
+  if (typeof gtag !== 'undefined') gtag('event', 'game_end', { outcome: 'bad' });
   closePhone();
   setChoices([]);
   actFade.style.zIndex = "9999";
