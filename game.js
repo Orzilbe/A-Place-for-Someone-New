@@ -48,6 +48,210 @@ const gameState = {
   loanFromDad: false,
 };
 
+// ── מנהל שמע — Web Audio API ────────────────────────────────────────────────
+let soundEnabled = true;
+
+const SoundManager = {
+  ctx: null,
+
+  init() {
+    if (this.ctx) return;
+    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+  },
+
+  resume() {
+    if (this.ctx && this.ctx.state === "suspended") {
+      this.ctx.resume();
+    }
+  },
+
+  babyCry() {
+    if (!soundEnabled) return;
+    this.init();
+    const ctx = this.ctx;
+    const duration = 1.8;
+
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    const distortion = ctx.createWaveShaper();
+
+    const curve = new Float32Array(256);
+    for (let i = 0; i < 256; i++) {
+      const x = (i * 2) / 256 - 1;
+      curve[i] = (Math.PI + 400) * x / (Math.PI + 400 * Math.abs(x));
+    }
+    distortion.curve = curve;
+
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(600, ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(900, ctx.currentTime + 0.3);
+    osc.frequency.linearRampToValueAtTime(500, ctx.currentTime + 0.7);
+    osc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 1.2);
+    osc.frequency.linearRampToValueAtTime(400, ctx.currentTime + duration);
+
+    gainNode.gain.setValueAtTime(0, ctx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 0.1);
+    gainNode.gain.linearRampToValueAtTime(0.1, ctx.currentTime + duration - 0.2);
+    gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + duration);
+
+    osc.connect(distortion);
+    distortion.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration);
+  },
+
+  phoneRing() {
+    if (!soundEnabled) return;
+    this.init();
+    const ctx = this.ctx;
+
+    const playRing = (startTime) => {
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+
+      osc1.frequency.value = 480;
+      osc2.frequency.value = 620;
+      osc1.type = "sine";
+      osc2.type = "sine";
+
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(0.12, startTime + 0.05);
+      gainNode.gain.linearRampToValueAtTime(0.12, startTime + 0.35);
+      gainNode.gain.linearRampToValueAtTime(0, startTime + 0.4);
+
+      osc1.connect(gainNode);
+      osc2.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      osc1.start(startTime);
+      osc1.stop(startTime + 0.4);
+      osc2.start(startTime);
+      osc2.stop(startTime + 0.4);
+    };
+
+    playRing(ctx.currentTime);
+    playRing(ctx.currentTime + 0.5);
+  },
+
+  moneySpend() {
+    if (!soundEnabled) return;
+    this.init();
+    const ctx = this.ctx;
+
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(1200, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.3);
+
+    gainNode.gain.setValueAtTime(0.15, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.3);
+
+    setTimeout(() => {
+      if (!this.ctx) return;
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = "sine";
+      osc2.frequency.setValueAtTime(900, ctx.currentTime);
+      osc2.frequency.exponentialRampToValueAtTime(500, ctx.currentTime + 0.2);
+      gain2.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(ctx.currentTime);
+      osc2.stop(ctx.currentTime + 0.2);
+    }, 120);
+  },
+
+  itemSecured() {
+    if (!soundEnabled) return;
+    this.init();
+    const ctx = this.ctx;
+    const notes = [523, 659, 784]; // C, E, G
+
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      const t = ctx.currentTime + i * 0.12;
+
+      osc.type = "sine";
+      osc.frequency.value = freq;
+
+      gainNode.gain.setValueAtTime(0, t);
+      gainNode.gain.linearRampToValueAtTime(0.12, t + 0.05);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.4);
+    });
+  },
+
+  sanityDrain() {
+    if (!soundEnabled) return;
+    this.init();
+    const ctx = this.ctx;
+
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(150, ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(80, ctx.currentTime + 0.3);
+
+    gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.3);
+  },
+
+  lullabySuccess() {
+    if (!soundEnabled) return;
+    this.init();
+    const ctx = this.ctx;
+    const notes = [392, 494, 587]; // G, B, D
+
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      const t = ctx.currentTime + i * 0.2;
+
+      osc.type = "sine";
+      osc.frequency.value = freq;
+
+      gainNode.gain.setValueAtTime(0, t);
+      gainNode.gain.linearRampToValueAtTime(0.08, t + 0.1);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.8);
+    });
+  },
+};
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  const btn = document.getElementById("sound-toggle");
+  if (btn) btn.textContent = soundEnabled ? "🔊" : "🔇";
+  const mobIcon = document.getElementById("mob-sound-icon");
+  if (mobIcon) mobIcon.textContent = soundEnabled ? "🔊" : "🔇";
+}
+
 // ── מצב טלפון ───────────────────────────────────────────────────────────────
 const phoneState = {
   notifications: 0,
@@ -224,6 +428,7 @@ function updateHUD() {
 // ── עדכוני תקציב / שפיות ────────────────────────────────────────────────────
 function spendBudget(amount) {
   gameState.budget = Math.max(0, gameState.budget - amount);
+  if (amount > 0) SoundManager.moneySpend();
   updateHUD();
 
   const budgetEl = document.getElementById("hud-budget-val");
@@ -254,6 +459,7 @@ function updateSanityFilter() {
 }
 
 function drainSanity(amount) {
+  SoundManager.sanityDrain();
   gameState.sanity = Math.max(0, gameState.sanity - amount);
   updateHUD();
   updateSanityFilter();
@@ -389,6 +595,7 @@ function checkAllSecured() {
 // ── סימון פריט כמובטח ───────────────────────────────────────────────────────
 function secureItem(item, cost, fromRonitL = false) {
   item.isSecured = true;
+  SoundManager.itemSecured();
   item._worn = (cost < item.costNew && cost > 0);
   if (fromRonitL) item._fromRonitL = true;
   if (!gameState.superstition) {
@@ -922,6 +1129,7 @@ function scheduleHusbandCall() {
 }
 
 function showCallBanner() {
+  SoundManager.phoneRing();
   gameState.callPending = true;
   $("call-name").textContent = "אוריאל 📞";
   $("call-sub").textContent = "מתקשר מהבסיס...";
@@ -1488,6 +1696,7 @@ function openPhoneHome() {
 }
 
 function addPhoneNotification(contactId, count = 1) {
+  SoundManager.phoneRing();
   const row = document.querySelector(`.contact-row[data-contact="${contactId}"]`);
   if (row) {
     const badge = row.querySelector(".contact-badge");
@@ -1970,6 +2179,7 @@ function stealthMouseHandler(e) {
       updateBabyWaves();
       if (gameState.babyMeter <= 30) babyMeterFill.classList.remove("danger");
       if (gameState.babyMeter === 0) {
+        SoundManager.lullabySuccess();
         gameState.lullabyPhase = false;
         gameState.stealthActive = false;
         renderBaby("sleeping");
@@ -2043,6 +2253,7 @@ function increaseBabyMeter(amount) {
 }
 
 function triggerBabyCrying() {
+  SoundManager.babyCry();
   if (typeof gtag !== 'undefined') gtag('event', 'baby_cried');
   gameState.stealthActive = false;
   gameState.lullabyPhase = false;
@@ -2186,6 +2397,9 @@ function init() {
   );
   updateHUD();
   renderRoom();
+
+  document.addEventListener("click", () => SoundManager.resume(), { once: true });
+  document.addEventListener("touchstart", () => SoundManager.resume(), { once: true });
 
   // Phone icon opens home screen
   const phoneIconWrapper = document.getElementById("phone-icon-wrapper");

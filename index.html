@@ -152,6 +152,13 @@
         </div>
       </div>
 
+      <div class="panel-stat" id="panel-sound">
+        <button id="sound-toggle" onclick="toggleSound()"
+          style="background:none;border:none;font-size:1.2rem;cursor:pointer;padding:0.2rem;">
+          🔊
+        </button>
+      </div>
+
     </aside>
 
   </div><!-- /app-layout -->
@@ -283,6 +290,9 @@
     <div class="mob-stat" id="mob-phone" onclick="openPhoneHome()">
       <span id="mob-phone-icon">📱</span>
       <span id="mob-phone-dot" class="mob-notif hidden"></span>
+    </div>
+    <div class="mob-stat" id="mob-sound" onclick="toggleSound()" style="cursor:pointer">
+      <span id="mob-sound-icon">🔊</span>
     </div>
   </div>
 
