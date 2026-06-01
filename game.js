@@ -1727,8 +1727,8 @@ function beginLullaby() {
 
   narrate(`
     <strong>😴 חלון שינה ${cycleNum} מתוך ${gameState.totalCycles}</strong><br><br>
-    התינוקת ערה. הזיזי את העכבר
-    <strong>לאט מאוד</strong> מעל התינוקת עד שתירדם.
+    התינוקת ערה. הזיזי <strong>לאט מאוד</strong>
+    מעל התינוקת עד שתירדם.
   `);
   setChoices([]);
 
@@ -1902,7 +1902,15 @@ function beginStealthMode() {
   if (!gameState.stealthListenerAdded) {
     gameState.stealthListenerAdded = true;
     document.addEventListener("mousemove", stealthMouseHandler);
+    document.addEventListener("touchmove", stealthTouchHandler, { passive: true });
   }
+}
+
+function stealthTouchHandler(e) {
+  if (!gameState.stealthActive) return;
+  const touch = e.touches[0];
+  if (!touch) return;
+  stealthMouseHandler({ clientX: touch.clientX, clientY: touch.clientY });
 }
 
 function stealthMouseHandler(e) {
@@ -2031,6 +2039,7 @@ function triggerEnding() {
   setChoices([]);
   actFade.style.zIndex = "9999";
   document.removeEventListener("mousemove", stealthMouseHandler);
+  document.removeEventListener("touchmove", stealthTouchHandler);
   gameState.stealthActive = false;
   gameState.lullabyPhase = false;
   babyMeterCont.style.display = "none";
@@ -2113,6 +2122,7 @@ function triggerBadEnding() {
   setChoices([]);
   actFade.style.zIndex = "9999";
   document.removeEventListener("mousemove", stealthMouseHandler);
+  document.removeEventListener("touchmove", stealthTouchHandler);
   gameState.stealthActive = false;
   const wavesEl = document.getElementById("baby-waves");
   if (wavesEl) wavesEl.classList.remove("active");

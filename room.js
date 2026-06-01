@@ -220,24 +220,38 @@ function _attachItemHandles(el, item, container) {
     }
   }
 
-  // Drag image to reposition
+  function getTouchPos(e) {
+    const touch = e.touches[0] || e.changedTouches[0];
+    return { clientX: touch.clientX, clientY: touch.clientY };
+  }
+
+  // Drag image to reposition — mouse
   el.addEventListener("mousedown", e => {
     if (e.target === handle) return;
     e.preventDefault();
+    startDrag(e.clientX, e.clientY);
+  });
 
-    const cr    = container.getBoundingClientRect();
-    const init  = getInitLayout();
-    const startX = e.clientX;
-    const startY = e.clientY;
+  // Drag image to reposition — touch
+  el.addEventListener("touchstart", e => {
+    if (e.target === handle) return;
+    e.preventDefault();
+    const pos = getTouchPos(e);
+    startDrag(pos.clientX, pos.clientY);
+  }, { passive: false });
+
+  function startDrag(startX, startY) {
+    const cr   = container.getBoundingClientRect();
+    const init = getInitLayout();
     let curL = init.left, curB = init.bottom;
 
     el.style.zIndex     = "50";
     el.style.cursor     = "grabbing";
     el.style.transition = "none";
 
-    function onMove(e) {
-      curL = Math.max(0, Math.min(90, init.left   + (e.clientX - startX) / cr.width  * 100));
-      curB = Math.max(0, Math.min(90, init.bottom - (e.clientY - startY) / cr.height * 100));
+    function onMove(clientX, clientY) {
+      curL = Math.max(0, Math.min(90, init.left   + (clientX - startX) / cr.width  * 100));
+      curB = Math.max(0, Math.min(90, init.bottom - (clientY - startY) / cr.height * 100));
       el.style.left   = curL.toFixed(1) + "%";
       el.style.bottom = curB.toFixed(1) + "%";
       syncHandle();
@@ -247,36 +261,63 @@ function _attachItemHandles(el, item, container) {
       el.style.cursor     = "grab";
       el.style.transition = "opacity 0.4s ease, transform 0.4s ease";
       saveLayout(curL, curB, init.width);
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup",   onUp);
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup",   onMouseUp);
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchend",  onTouchEnd);
     }
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup",   onUp);
-  });
+    function onMouseMove(e) { onMove(e.clientX, e.clientY); }
+    function onMouseUp()    { onUp(); }
+    function onTouchMove(e) { const p = getTouchPos(e); onMove(p.clientX, p.clientY); }
+    function onTouchEnd()   { onUp(); }
 
-  // Drag corner handle to resize
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup",   onMouseUp);
+    document.addEventListener("touchmove", onTouchMove, { passive: true });
+    document.addEventListener("touchend",  onTouchEnd);
+  }
+
+  // Drag corner handle to resize — mouse
   handle.addEventListener("mousedown", e => {
     e.preventDefault();
     e.stopPropagation();
+    startResize(e.clientX);
+  });
 
-    const cr     = container.getBoundingClientRect();
-    const init   = getInitLayout();
-    const startX = e.clientX;
-    let curW = init.width;
+  // Drag corner handle to resize — touch
+  handle.addEventListener("touchstart", e => {
+    e.preventDefault();
+    e.stopPropagation();
+    startResize(getTouchPos(e).clientX);
+  }, { passive: false });
 
-    function onMove(e) {
-      curW = Math.max(4, Math.min(60, init.width + (e.clientX - startX) / cr.width * 100));
+  function startResize(startX) {
+    const cr   = container.getBoundingClientRect();
+    const init = getInitLayout();
+    let curW   = init.width;
+
+    function onMove(clientX) {
+      curW = Math.max(4, Math.min(60, init.width + (clientX - startX) / cr.width * 100));
       el.style.width = curW.toFixed(1) + "%";
       syncHandle();
     }
     function onUp() {
       saveLayout(init.left, init.bottom, curW);
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup",   onUp);
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup",   onMouseUp);
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchend",  onTouchEnd);
     }
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup",   onUp);
-  });
+    function onMouseMove(e) { onMove(e.clientX); }
+    function onMouseUp()    { onUp(); }
+    function onTouchMove(e) { onMove(getTouchPos(e).clientX); }
+    function onTouchEnd()   { onUp(); }
+
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup",   onMouseUp);
+    document.addEventListener("touchmove", onTouchMove, { passive: true });
+    document.addEventListener("touchend",  onTouchEnd);
+  }
 }
 
 // ── מצב רוח חדר (יום / לילה) ─────────────────────────────────
