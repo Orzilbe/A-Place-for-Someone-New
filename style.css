@@ -919,144 +919,46 @@ body {
   font-size: 16px !important;
 }
 
+/* ─── Mobile Bottom Bar (desktop hidden) ───────────────────── */
+#mobile-bottom-bar {
+  display: none;
+}
+
 /* ─── Mobile — 768px breakpoint ────────────────────────────── */
 @media (max-width: 768px) {
 
-  /* Stack side panel above game */
+  /* Hide side panel entirely on mobile */
+  #side-panel {
+    display: none !important;
+  }
+
+  /* App layout — full vertical stack */
   #app-layout {
     flex-direction: column;
   }
 
-  /* Side panel becomes a horizontal bar at top */
-  #side-panel {
-    width: 100%;
-    height: auto;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    padding: 0.4rem 0.8rem;
-    gap: 0.6rem;
-    border-left: none;
-    border-bottom: 2px solid var(--sand-dark);
-    align-items: center;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    order: 0;
-  }
-  #side-panel::-webkit-scrollbar {
-    display: none;
-  }
-
-  /* game-wrapper after side panel */
+  /* Game wrapper takes full width */
   #game-wrapper {
-    order: 1;
     flex: 1;
+    display: flex;
+    flex-direction: column;
     min-height: 0;
   }
 
-  /* Panel stats become compact inline pills */
-  .panel-stat {
-    flex-direction: row;
-    align-items: center;
-    gap: 0.3rem;
-    flex-shrink: 0;
-  }
-
-  .stat-label {
-    font-size: 0.65rem;
-  }
-
-  .stat-big {
-    font-size: 0.9rem;
-  }
-
-  /* Hearts smaller */
-  #sanity-hearts span {
-    font-size: 0.75rem;
-  }
-
-  /* Item thumbnails — hide labels, show only images */
-  #item-icons .item-thumb span {
-    display: none;
-  }
-
-  #item-icons .item-thumb img {
-    width: 24px;
-    height: 24px;
-  }
-
-  #item-icons {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 3px;
-  }
-
-  /* Panel title — hide on mobile */
-  #panel-title {
-    display: none;
-  }
-
-  /* Tasks panel — horizontal on mobile, force visible when act 2 */
-  #panel-tasks {
-    flex-direction: row;
-    align-items: center;
-    gap: 0.5rem;
-    flex-wrap: nowrap;
-    flex-shrink: 0;
-  }
-  #panel-tasks[style*="display: flex"],
-  #panel-tasks[style*="display:flex"] {
-    display: flex !important;
-  }
-
-  #task-list {
-    display: flex;
-    flex-direction: row;
-    gap: 0.4rem;
-    align-items: center;
-  }
-
-  .task-item {
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    font-size: 0.62rem;
-    min-width: 36px;
-  }
-
-  .task-icon {
-    font-size: 1rem;
-  }
-
-  .task-name {
-    font-size: 0.58rem;
-    text-align: center;
-  }
-
-  .task-check {
-    font-size: 0.7rem;
-    margin-right: 0;
-  }
-
-  /* Hide tasks subtitle on mobile — no room */
-  #tasks-subtitle {
-    display: none;
-  }
-
-  /* Room takes 55% of viewport height */
+  /* Room takes ~42% of screen */
   #room-view {
-    flex: 0 0 55vh;
-    max-height: 55vh;
+    flex: 0 0 42vh;
+    max-height: 42vh;
   }
 
-  /* Dialogue area takes remaining space */
+  /* Dialogue takes remaining space above bottom bar */
   #dialogue-area {
     flex: 1;
-    height: auto;
-    min-height: 140px;
+    min-height: 130px;
     max-height: none;
+    height: auto;
     padding: 0.5rem 0.8rem;
+    padding-bottom: 0.4rem;
   }
 
   #narration-text {
@@ -1071,7 +973,6 @@ body {
     min-height: 44px;
   }
 
-  /* Action cards — wrap on mobile */
   #choice-buttons > div {
     flex-wrap: wrap !important;
     justify-content: center;
@@ -1080,6 +981,72 @@ body {
   #choice-buttons img {
     width: 44px !important;
     height: 44px !important;
+  }
+
+  /* Mobile bottom bar */
+  #mobile-bottom-bar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0.4rem 1rem;
+    background: var(--sand);
+    border-top: 2px solid var(--sand-dark);
+    flex-shrink: 0;
+    direction: rtl;
+    height: 52px;
+    position: relative;
+    z-index: 50;
+  }
+
+  .mob-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--charcoal);
+    position: relative;
+  }
+
+  .mob-icon {
+    font-size: 1rem;
+  }
+
+  #mob-sanity {
+    flex: 1;
+    justify-content: center;
+  }
+
+  #mob-hearts {
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+  }
+
+  #mob-phone {
+    cursor: pointer;
+    padding: 0.2rem 0.4rem;
+    border-radius: 8px;
+    transition: background 0.15s;
+  }
+
+  #mob-phone:active {
+    background: rgba(0,0,0,0.08);
+  }
+
+  #mob-phone-icon {
+    font-size: 1.4rem;
+  }
+
+  .mob-notif {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 8px;
+    height: 8px;
+    background: #e05555;
+    border-radius: 50%;
+    border: 1.5px solid var(--sand);
   }
 
   /* Phone overlay — full screen bottom sheet */
@@ -1109,21 +1076,15 @@ body {
     min-height: 44px;
   }
 
-  /* Toast — position above keyboard area */
+  /* Lullaby hint — above bottom bar */
+  #lullaby-hint {
+    bottom: 60px;
+  }
+
+  /* Toast — above bottom bar */
   #toast {
-    bottom: auto;
-    top: 80px;
-  }
-
-  /* Act 2 — action cards need more room than the nursery view */
-  #game-wrapper.act2 #room-view {
-    flex: 0 0 45vh;
-    max-height: 45vh;
-  }
-
-  #game-wrapper.act2 #dialogue-area {
-    flex: 1;
-    min-height: 180px;
+    bottom: 64px;
+    top: auto;
   }
 }
 

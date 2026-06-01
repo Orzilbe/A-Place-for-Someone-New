@@ -186,6 +186,39 @@ function updateHUD() {
       cycleEl.style.display = "none";
     }
   }
+
+  // ── סנכרון סרגל תחתון למובייל ─────────────────────────────────
+  const mobBudget = document.getElementById("mob-budget-val");
+  if (mobBudget) {
+    mobBudget.textContent = gameState.budget.toLocaleString("he-IL") + " ₪";
+    mobBudget.style.color = gameState.budget === 0
+      ? "#c03030"
+      : gameState.budget < 1000
+        ? "#c8a030"
+        : "#4a7c59";
+  }
+
+  const mobHearts = document.getElementById("mob-hearts");
+  if (mobHearts) {
+    const filled = Math.round(gameState.sanity / 10);
+    mobHearts.textContent = "🩷".repeat(filled) + "🤍".repeat(10 - filled);
+  }
+
+  const mobItems = document.getElementById("mob-items-val");
+  if (mobItems) {
+    const secured = gameState.items.filter(i => i.isSecured).length;
+    mobItems.textContent = secured + "/5";
+  }
+
+  const mobDot = document.getElementById("mob-phone-dot");
+  const desktopDot = document.getElementById("phone-notification-dot");
+  if (mobDot && desktopDot) {
+    if (desktopDot.classList.contains("hidden")) {
+      mobDot.classList.add("hidden");
+    } else {
+      mobDot.classList.remove("hidden");
+    }
+  }
 }
 
 // ── עדכוני תקציב / שפיות ────────────────────────────────────────────────────
@@ -1467,6 +1500,8 @@ function addPhoneNotification(contactId, count = 1) {
   const dot  = document.getElementById("phone-notification-dot");
   if (icon) icon.classList.add("ringing");
   if (dot)  dot.classList.remove("hidden");
+  const mobDot = document.getElementById("mob-phone-dot");
+  if (mobDot) mobDot.classList.remove("hidden");
 }
 
 function clearPhoneNotifications() {
@@ -1475,6 +1510,8 @@ function clearPhoneNotifications() {
   const icon = document.getElementById("phone-icon");
   if (dot)  dot.classList.add("hidden");
   if (icon) icon.classList.remove("ringing");
+  const mobDot = document.getElementById("mob-phone-dot");
+  if (mobDot) mobDot.classList.add("hidden");
 }
 
 // ── צ׳אט AI גנרי לכל איש קשר ───────────────────────────────────────────────
