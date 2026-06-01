@@ -1639,6 +1639,7 @@ function beginAct2() {
   gameState.sleepCycle = 0;
   gameState.lullabyPhase = false;
   hudAct.textContent = "היום הראשון";
+  document.getElementById("game-wrapper").classList.add("act2");
   updateHUD();
   setRoomMood("night");
   const sidePanel = document.getElementById("side-panel");
