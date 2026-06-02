@@ -43,6 +43,13 @@ button:active { transform: scale(0.97); }
 
 .hidden { display: none !important; }
 
+/* ─── Mini-game: coffee steam keyframes ────────────────── */
+@keyframes steamRise {
+  0%   { transform: translateY(0)    scale(1);   opacity: 0.7; }
+  50%  { transform: translateY(-14px) scale(1.3); opacity: 0.4; }
+  100% { transform: translateY(-22px) scale(0.8); opacity: 0;   }
+}
+
 /* ─── App Layout ───────────────────────────────────────── */
 body {
   display: flex;
@@ -344,36 +351,37 @@ body {
 
 /* ─── Dialogue Area ────────────────────────────────────── */
 #dialogue-area {
-  height: 220px;
-  flex-shrink: 0;
-  min-height: 220px;
-  max-height: 220px;
+  flex: 0 0 30vh;
+  min-height: 240px;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;   /* narration top, buttons bottom */
   overflow: hidden;
   background: var(--white);
-  border-top: 2px solid var(--rose);
-  padding: 0.6rem 1rem;
-  gap: 0.5rem;
+  padding: 1.3rem 1.6rem 1.1rem;
+  gap: 1rem;
   direction: rtl;
 }
 
 #narration-box {
-  flex: 1;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;              /* centers text vertically in the empty space */
   overflow: hidden;
   min-height: 0;
   direction: rtl;
 }
 
 #narration-text {
-  font-size: 0.85rem;
-  line-height: 1.55;
+  width: 100%;
+  font-size: 1.05rem;
+  line-height: 1.7;
   color: var(--charcoal);
   direction: rtl;
   text-align: right;
   unicode-bidi: plaintext;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 6;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -382,7 +390,7 @@ body {
   flex-shrink: 0;
   display: flex;
   flex-wrap: nowrap;
-  gap: 0.5rem;
+  gap: 0.6rem;
   justify-content: center;
   overflow: hidden;
   direction: rtl;
@@ -394,17 +402,17 @@ body {
 }
 
 #choice-buttons img {
-  width: 40px !important;
-  height: 40px !important;
+  width: 44px !important;
+  height: 44px !important;
 }
 
 #choice-buttons span {
-  font-size: 0.65rem !important;
+  font-size: 0.7rem !important;
 }
 
 #choice-buttons button {
-  padding: 0.45rem 1.1rem;
-  font-size: 0.85rem;
+  padding: 0.65rem 1.4rem;
+  font-size: 0.95rem;
   background: var(--sand);
   color: var(--charcoal);
   border: 1.5px solid var(--sand-dark);
@@ -977,16 +985,22 @@ body {
   /* Dialogue takes remaining space above bottom bar */
   #dialogue-area {
     flex: 1;
-    min-height: 130px;
+    min-height: 180px;
     max-height: none;
     height: auto;
-    padding: 0.5rem 0.8rem;
-    padding-bottom: 0.4rem;
+    padding: 1rem 1.1rem 0.8rem;
   }
 
   #narration-text {
-    font-size: 0.82rem;
-    -webkit-line-clamp: 4;
+    font-size: 0.95rem;
+    line-height: 1.65;
+    -webkit-line-clamp: 5;
+  }
+
+  /* On mobile the dialogue area is much taller, so vertical-center
+     leaves a big void above the text — pin it to the top instead. */
+  #narration-box {
+    align-items: flex-start;
   }
 
   /* Choice buttons — larger touch targets */
@@ -1115,12 +1129,13 @@ body {
 @media (max-width: 480px) {
 
   #narration-text {
-    font-size: 0.78rem;
+    font-size: 0.88rem;
+    line-height: 1.6;
   }
 
   #choice-buttons button {
-    font-size: 0.78rem;
-    padding: 0.5rem 0.8rem;
+    font-size: 0.85rem;
+    padding: 0.55rem 0.9rem;
   }
 
   .wa-bubble {

@@ -39,14 +39,48 @@ const gameState = {
   choiceMade:           false,
   roniConvoHistory:     [],
   itemPositions:        {},
-  tasksCompleted: {
-    pump:     false,
-    laundry:  false,
-    selfcare: false,
+  tasksDone: {
+    pump:    false,
+    laundry: false,
   },
   loanFromMom: false,
   loanFromDad: false,
+  // ── מצב מחזה ב׳ — טיימר שינה ומיני־משחקים ──
+  sleepTimer:        0,
+  sleepTimerTimeout: null,
+  activeMinigame:    null,   // "pump" | "laundry" | "coffee" | "reading"
+  minigameCleanup:   null,   // () => void — מנקה DOM/טיימרים כשהתינוקת בוכה
+  readingMode:       false,  // משאיר את stealthMouseHandler בעדינות יתרה
+  endingTriggered:   false,  // true ברגע שהיום נגמר — חוסם השכמות/הרדמות נוספות
 };
+
+// ── טיימר שינה — מחזה ב׳ ───────────────────────────────────────────────
+function startSleepTimer() {
+  clearSleepTimer();
+  gameState.sleepTimer = Math.random() * 20000 + 20000;   // 20–40s
+  gameState.sleepTimerTimeout = setTimeout(() => {
+    gameState.sleepTimerTimeout = null;
+    if (gameState.stealthActive && !gameState.lullabyPhase) {
+      triggerBabyCrying();
+    }
+  }, gameState.sleepTimer);
+}
+
+function clearSleepTimer() {
+  if (gameState.sleepTimerTimeout) {
+    clearTimeout(gameState.sleepTimerTimeout);
+    gameState.sleepTimerTimeout = null;
+  }
+}
+
+function runMinigameCleanup() {
+  if (typeof gameState.minigameCleanup === "function") {
+    try { gameState.minigameCleanup(); } catch (e) { console.error(e); }
+  }
+  gameState.minigameCleanup = null;
+  gameState.activeMinigame  = null;
+  gameState.readingMode     = false;
+}
 
 // ── מנהל שמע — Web Audio API ────────────────────────────────────────────────
 let soundEnabled = true;
@@ -216,6 +250,23 @@ const SoundManager = {
     gainNode.connect(ctx.destination);
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.3);
+  },
+
+  softClick() {
+    if (!soundEnabled) return;
+    this.init();
+    const ctx = this.ctx;
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(720, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(480, ctx.currentTime + 0.08);
+    gainNode.gain.setValueAtTime(0.08, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.09);
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.1);
   },
 
   lullabySuccess() {
@@ -391,7 +442,7 @@ function updateHUD() {
     if (gameState.act === 2) {
       cycleEl.style.display = "flex";
       const valEl = cycleEl.querySelector(".stat-value");
-      if (valEl) valEl.textContent = `${gameState.sleepCycle + 1} / ${gameState.totalCycles}`;
+      if (valEl) valEl.textContent = `חלון ${gameState.sleepCycle + 1} מתוך ${gameState.totalCycles}`;
     } else {
       cycleEl.style.display = "none";
     }
@@ -2024,13 +2075,15 @@ function unpackBox(item, boxEl) {
 
 // ── שלב הרדמה — היום הראשון ─────────────────────────────────────────────────────
 function beginLullaby() {
+  if (gameState.endingTriggered) return;          // היום נגמר — אין עוד הרדמות
+  clearSleepTimer();
   gameState.lullabyPhase = true;
   gameState.stealthActive = true;
   gameState.babyMeter = 80;
   babyMeterFill.style.width = "80%";
   babyMeterFill.classList.add("danger");
 
-  const cycleNum = gameState.sleepCycle + 1;
+  const cycleNum = Math.min(gameState.sleepCycle + 1, gameState.totalCycles);
 
   renderBaby("crying");
   renderRoom();
@@ -2061,46 +2114,78 @@ function beginActionPhase() {
   gameState.babyMeter = 0;
   babyMeterFill.classList.remove("danger");
   babyMeterFill.style.width = "0%";
+  updateTasksPanel();
+  startSleepTimer();   // התינוקת תתעורר עוד 20–40 שניות (אלא אם המד יגיע ל-100 קודם)
   showSelfCareMenu();
 }
 
 function showSelfCareMenu() {
-  narrate("התינוקת ישנה 😴 בחרי מה לעשות עכשיו:");
+  const cycle    = gameState.sleepCycle;
+  const pumpHint = cycle === 0 ? "⭐ עדיף לשאוב בהתחלה" : null;
 
-  const actions = [
-    {
-      id: "coffee",
-      img: "assets/ActionCoffee.png",
-      label: "☕ קפה",
-      sub: "+8 שפיות",
-      quiet: true,
-      action: () => { restoreSanity(8); showToast("+8 שפיות — חמימות בכפות הידיים."); completeTask("selfcare"); endActionPhase(); }
-    },
-    {
-      id: "book",
-      img: "assets/ActionBook.png",
-      label: "📖 לקרוא",
-      sub: "+5 שפיות",
-      quiet: true,
-      action: () => { restoreSanity(5); showToast("+5 שפיות — נזכרת מי את."); completeTask("selfcare"); endActionPhase(); }
-    },
-    {
-      id: "pump",
+  const actions = [];
+
+  // ── שאיבה (אם לא בוצעה) ─────────────────────────────────────────
+  if (!gameState.tasksDone.pump) {
+    const electricCost = 200;
+    const canAffordElectric = gameState.budget >= electricCost;
+    actions.push({
       img: "assets/ActionPump.png",
-      label: "🍼 שאיבה",
-      sub: "לוגיסטיקה, שקט",
+      label: "🍼 משאבה חשמלית",
+      sub:   `${electricCost} ₪ 🔇`,
       quiet: true,
-      action: () => { restoreSanity(2); showToast("שאיבה הסתיימה."); completeTask("pump"); endActionPhase(); }
-    },
-    {
-      id: "laundry",
-      img: "assets/ActionLaundry.png",
-      label: "🧺 כביסה",
-      sub: "לוגיסטיקה, רועש!",
+      disabled: !canAffordElectric,
+      hint:  pumpHint,
+      action: () => startPumpMinigame("electric"),
+    });
+    actions.push({
+      img: "assets/ActionPump.png",
+      label: "🍼 משאבה ידנית",
+      sub:   "חינם 🔉",
       quiet: false,
-      action: () => { increaseBabyMeter(20); showToast("מחזור הכביסה. כמובן שדווקא עכשיו."); completeTask("laundry"); endActionPhase(); }
-    },
-  ];
+      hint:  pumpHint,
+      action: () => startPumpMinigame("manual"),
+    });
+  }
+
+  // ── כביסה (אם לא בוצעה) ─────────────────────────────────────────
+  if (!gameState.tasksDone.laundry) {
+    const laundromatCost = 150;
+    const canAffordLaundromat = gameState.budget >= laundromatCost;
+    actions.push({
+      img: "assets/ActionLaundry.png",
+      label: "🧺 מכבסה",
+      sub:   `${laundromatCost} ₪ 🔇`,
+      quiet: true,
+      disabled: !canAffordLaundromat,
+      action: () => startLaundryMinigame("service"),
+    });
+    actions.push({
+      img: "assets/ActionLaundry.png",
+      label: "🧺 כביסה בבית",
+      sub:   "חינם 🔉",
+      quiet: false,
+      action: () => startLaundryMinigame("home"),
+    });
+  }
+
+  // ── טיפול עצמי — תמיד זמין, חוזר על עצמו ───────────────────────
+  actions.push({
+    img: "assets/ActionCoffee.png",
+    label: "☕ קפה",
+    sub:   "+8 שפיות",
+    quiet: true,
+    action: () => startCoffeeMinigame(),
+  });
+  actions.push({
+    img: "assets/ActionBook.png",
+    label: "📖 לקרוא",
+    sub:   "+5 שפיות",
+    quiet: true,
+    action: () => startReadingMinigame(),
+  });
+
+  narrate("התינוקת ישנה 😴 בחרי מה לעשות עכשיו:");
 
   choiceButtons.innerHTML = "";
   const grid = document.createElement("div");
@@ -2114,6 +2199,7 @@ function showSelfCareMenu() {
 
   actions.forEach(a => {
     const card = document.createElement("div");
+    const disabled = !!a.disabled;
     card.style.cssText = `
       display: flex;
       flex-direction: column;
@@ -2122,32 +2208,38 @@ function showSelfCareMenu() {
       background: white;
       border: 2px solid ${a.quiet ? "var(--sage)" : "var(--rose)"};
       border-radius: 16px;
-      padding: 0.6rem 0.8rem;
-      cursor: pointer;
-      width: 80px;
+      padding: 0.6rem 0.7rem;
+      width: 92px;
       transition: transform 0.15s, box-shadow 0.15s;
       direction: rtl;
+      cursor: ${disabled ? "not-allowed" : "pointer"};
+      opacity: ${disabled ? 0.4 : 1};
+      filter: ${disabled ? "grayscale(0.6)" : "none"};
     `;
+    if (a.tip) card.title = a.tip;
     card.innerHTML = `
-      <img src="${a.img}" style="width:48px;height:48px;object-fit:contain;" alt="${a.label}"/>
-      <span style="font-size:0.75rem;font-weight:700;color:var(--charcoal);text-align:center;">${a.label}</span>
-      <span style="font-size:0.65rem;color:var(--muted);text-align:center;">${a.sub}</span>
+      <img src="${a.img}" style="width:44px;height:44px;object-fit:contain;" alt="${a.label}"/>
+      <span style="font-size:0.72rem;font-weight:700;color:var(--charcoal);text-align:center;">${a.label}</span>
+      <span style="font-size:0.62rem;color:var(--muted);text-align:center;">${a.sub}</span>
+      ${a.hint ? `<span style="font-size:0.58rem;color:var(--sage-dark);text-align:center;font-weight:700;">${a.hint}</span>` : ""}
     `;
-    card.addEventListener("mouseenter", () => {
-      card.style.transform = "translateY(-3px)";
-      card.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
-    });
-    card.addEventListener("mouseleave", () => {
-      card.style.transform = "";
-      card.style.boxShadow = "";
-    });
-    card.addEventListener("click", () => {
-      grid.querySelectorAll("div").forEach(c => {
-        c.style.opacity = "0.5";
-        c.style.pointerEvents = "none";
+    if (!disabled) {
+      card.addEventListener("mouseenter", () => {
+        card.style.transform = "translateY(-3px)";
+        card.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
       });
-      a.action();
-    });
+      card.addEventListener("mouseleave", () => {
+        card.style.transform = "";
+        card.style.boxShadow = "";
+      });
+      card.addEventListener("click", () => {
+        grid.querySelectorAll("div").forEach(c => {
+          c.style.opacity = "0.5";
+          c.style.pointerEvents = "none";
+        });
+        a.action();
+      });
+    }
     grid.appendChild(card);
   });
 
@@ -2156,32 +2248,560 @@ function showSelfCareMenu() {
 
 // ── סימון משימה כבוצעה ───────────────────────────────────────────────────────
 function completeTask(taskId) {
-  if (gameState.tasksCompleted[taskId]) return;
-  gameState.tasksCompleted[taskId] = true;
+  if (!(taskId in gameState.tasksDone)) return;
+  if (gameState.tasksDone[taskId]) return;
+  gameState.tasksDone[taskId] = true;
 
   const el = document.getElementById("task-" + taskId);
   if (el) {
     el.classList.add("done");
-    el.querySelector(".task-check").textContent = "✓";
+    const check = el.querySelector(".task-check");
+    if (check) check.textContent = "✓";
+    const hint = el.querySelector(".task-hint");
+    if (hint) hint.remove();
   }
+}
 
-  const allDone = Object.values(gameState.tasksCompleted).every(v => v);
-  if (allDone) {
-    showToast("כל משימות היום הושלמו! 🌟");
-    setTimeout(triggerEnding, 1500);
-  }
+// ── עדכון לוח המשימות בצד ───────────────────────────────────────────────────
+function updateTasksPanel() {
+  ["pump", "laundry"].forEach(id => {
+    const el = document.getElementById("task-" + id);
+    if (!el) return;
+    const done = gameState.tasksDone[id];
+    if (done) {
+      el.classList.add("done");
+      const check = el.querySelector(".task-check");
+      if (check) check.textContent = "✓";
+    }
+    // רמז "עדיף עכשיו" לשאיבה — מחזורים 0-1 בלבד, רק אם לא בוצעה
+    if (id === "pump") {
+      let hint = el.querySelector(".task-hint");
+      const showHint = !done && gameState.act === 2 && gameState.sleepCycle <= 1;
+      if (showHint && !hint) {
+        hint = document.createElement("span");
+        hint.className = "task-hint";
+        hint.textContent = "⭐ עדיף עכשיו";
+        hint.style.cssText =
+          "font-size:0.62rem;color:var(--sage-dark);font-weight:700;margin-right:0.3rem;";
+        el.appendChild(hint);
+      } else if (!showHint && hint) {
+        hint.remove();
+      }
+    }
+  });
 }
 
 // ── סיום שלב פעולה ────────────────────────────────────────────────────────────
 function endActionPhase() {
-  gameState.sleepCycle++;
   updateHUD();
+  updateTasksPanel();
+  // sleepCycle מתקדם רק עם הרדמה מוצלחת. כאן רק חוזרים לתפריט;
+  // השכמה מתבצעת דרך triggerBabyCrying (טיימר השינה או מד הרעות).
+  setTimeout(showSelfCareMenu, 400);
+}
 
-  narrate("התינוקת מתעוררת... 👶");
-  setTimeout(() => {
-    drainSanity(2);
-    beginLullaby();
-  }, 1500);
+// ═══════════════════════════════════════════════════════════════════════
+//  MINI-GAMES — replace #choice-buttons content during a task
+// ═══════════════════════════════════════════════════════════════════════
+
+// בסיס למיני־משחק: ננקה את שטח הבחירה, נרשום cleanup, ונחזיר את ה־host element.
+function _minigameHost(name) {
+  runMinigameCleanup();
+  gameState.activeMinigame = name;
+  choiceButtons.innerHTML = "";
+  const host = document.createElement("div");
+  host.className = "minigame";
+  host.style.cssText = `
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    direction: rtl;
+    width: 100%;
+  `;
+  choiceButtons.appendChild(host);
+  return host;
+}
+
+// ── מיני־משחק שאיבה ──────────────────────────────────────────────────
+function startPumpMinigame(mode) {
+  const host = _minigameHost("pump");
+  const isElectric = mode === "electric";
+
+  if (isElectric) {
+    gameState.budget -= 200;
+    SoundManager.moneySpend();
+    updateHUD();
+  }
+
+  // בקבוק + כפתור/הודעה
+  host.innerHTML = `
+    <div style="font-size:0.85rem;color:var(--charcoal);font-weight:700;">
+      ${isElectric ? "🔇 משאבה חשמלית" : "🔉 משאבה ידנית"}
+    </div>
+    <div class="bottle-wrap" style="position:relative;width:60px;height:110px;">
+      <div class="bottle-outline" style="
+        position:absolute; inset:0;
+        border:3px solid var(--charcoal);
+        border-top: 3px solid transparent;
+        border-radius: 10px 10px 14px 14px;
+        background: rgba(255,255,255,0.4);
+        overflow: hidden;
+      ">
+        <div class="bottle-fill" style="
+          position:absolute; left:0; right:0; bottom:0;
+          height:0%;
+          background: linear-gradient(180deg, #fff8e7 0%, #f3e6c4 100%);
+          transition: height 0.25s ease;
+        "></div>
+      </div>
+      <div style="
+        position:absolute; top:-10px; left:50%; transform:translateX(-50%);
+        width:24px; height:10px; border:3px solid var(--charcoal);
+        border-bottom:none; border-radius:6px 6px 0 0; background:var(--cream);
+      "></div>
+    </div>
+    <div class="pump-progress" style="font-size:0.78rem;color:var(--muted);">
+      ${isElectric ? "מתמלא..." : "0/10 לחיצות"}
+    </div>
+    ${isElectric ? "" : `
+      <button class="pump-btn" style="
+        padding:0.55rem 1.4rem; font-size:0.9rem; font-weight:700;
+        background:var(--sage); color:var(--charcoal);
+        border:2px solid var(--sage-dark); border-radius:14px;
+        cursor:pointer; direction:rtl;
+      ">לחצי לשאוב 🍼</button>
+    `}
+  `;
+
+  const fillEl     = host.querySelector(".bottle-fill");
+  const progressEl = host.querySelector(".pump-progress");
+
+  if (isElectric) {
+    // מילוי אוטומטי ב-8 שניות
+    requestAnimationFrame(() => {
+      fillEl.style.transition = "height 8s linear";
+      fillEl.style.height = "100%";
+    });
+    const finishT = setTimeout(() => {
+      pumpComplete();
+    }, 8100);
+    gameState.minigameCleanup = () => {
+      clearTimeout(finishT);
+      choiceButtons.innerHTML = "";
+    };
+  } else {
+    // ידנית — 10 לחיצות
+    let clicks = 0;
+    const btn = host.querySelector(".pump-btn");
+    const onClick = () => {
+      if (clicks >= 10) return;
+      clicks++;
+      fillEl.style.height = (clicks * 10) + "%";
+      progressEl.textContent = `${clicks}/10 לחיצות`;
+      SoundManager.softClick();
+      increaseBabyMeter(2);
+      // אם התינוקת התעוררה (מד 100) — runMinigameCleanup כבר רץ דרך triggerBabyCrying
+      if (gameState.activeMinigame !== "pump") return;
+      if (clicks >= 10) {
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
+        setTimeout(pumpComplete, 350);
+      }
+    };
+    btn.addEventListener("click", onClick);
+    gameState.minigameCleanup = () => {
+      btn.removeEventListener("click", onClick);
+      choiceButtons.innerHTML = "";
+    };
+  }
+
+  function pumpComplete() {
+    if (gameState.activeMinigame !== "pump") return;
+    runMinigameCleanup();
+    showToast("שאיבה הסתיימה 🍼");
+    completeTask("pump");
+    endActionPhase();
+  }
+}
+
+// ── מיני־משחק כביסה ──────────────────────────────────────────────────
+function startLaundryMinigame(mode) {
+  const host = _minigameHost("laundry");
+  const isService = mode === "service";
+
+  if (isService) {
+    gameState.budget -= 150;
+    SoundManager.moneySpend();
+    updateHUD();
+  }
+
+  // הודעת התקדמות בלבד בתחתית
+  host.innerHTML = `
+    <div style="font-size:0.85rem;color:var(--charcoal);font-weight:700;">
+      ${isService ? "🔇 שירות איסוף כביסה" : "🔉 כביסה בבית"}
+    </div>
+    <div class="laundry-progress" style="font-size:0.8rem;color:var(--muted);">
+      0/4 פריטים נאספו — גררי לסל
+    </div>
+  `;
+  const progressEl = host.querySelector(".laundry-progress");
+
+  const roomView = document.getElementById("room-view");
+  const clothes = [
+    { src: "assets/Small socks need washing.png",       alt: "גרביים" },
+    { src: "assets/Baby shirt worn slightly dirty.png", alt: "חולצה" },
+    { src: "assets/baby overall.png",                   alt: "אוברול" },
+    { src: "assets/Baby hat needs washing.png",         alt: "כובע" },
+  ];
+  const positions = [
+    { left: "12%", bottom: "28%" },
+    { left: "38%", bottom: "32%" },
+    { left: "62%", bottom: "30%" },
+    { left: "80%", bottom: "26%" },
+  ];
+
+  // סל יעד
+  const bag = document.createElement("img");
+  bag.src = "assets/laundryBag.png";
+  bag.alt = "סל כביסה";
+  bag.id  = "laundry-bag-target";
+  bag.style.cssText = `
+    position:absolute; left:50%; bottom:4%;
+    transform:translateX(-50%);
+    width:14%; height:auto; z-index:6;
+    pointer-events:none;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25));
+  `;
+  roomView.appendChild(bag);
+
+  const items = [];
+  let collected = 0;
+
+  clothes.forEach((c, i) => {
+    const el = document.createElement("img");
+    el.src = c.src;
+    el.alt = c.alt;
+    el.className = "laundry-item";
+    el.style.cssText = `
+      position:absolute;
+      left:${positions[i].left}; bottom:${positions[i].bottom};
+      width:9%; height:auto; z-index:7;
+      cursor:grab;
+      object-fit:contain;
+      transition: filter 0.3s ease, transform 0.2s ease, opacity 0.3s ease;
+      ${isService ? "filter: drop-shadow(0 0 8px rgba(255,225,140,0.9)) drop-shadow(0 2px 4px rgba(0,0,0,0.25));" : "filter: drop-shadow(0 2px 5px rgba(0,0,0,0.3));"}
+    `;
+    roomView.appendChild(el);
+    items.push(el);
+    _attachLaundryDrag(el);
+  });
+
+  function _attachLaundryDrag(el) {
+    let startX = 0, startY = 0, baseLeft = 0, baseBottom = 0;
+    const cr = () => roomView.getBoundingClientRect();
+
+    const onDown = (clientX, clientY) => {
+      const r = roomView.getBoundingClientRect();
+      baseLeft   = parseFloat(el.style.left);
+      baseBottom = parseFloat(el.style.bottom);
+      startX = clientX; startY = clientY;
+      el.style.cursor = "grabbing";
+      el.style.zIndex = "20";
+    };
+
+    const onMove = (clientX, clientY) => {
+      const r = cr();
+      const dxPct = (clientX - startX) / r.width  * 100;
+      const dyPct = (clientY - startY) / r.height * 100;
+      const newLeft   = Math.max(0, Math.min(92, baseLeft + dxPct));
+      const newBottom = Math.max(0, Math.min(90, baseBottom - dyPct));
+      el.style.left   = newLeft + "%";
+      el.style.bottom = newBottom + "%";
+    };
+
+    const onUp = () => {
+      el.style.cursor = "grab";
+      // האם נחת על הסל?
+      const er = el.getBoundingClientRect();
+      const br = bag.getBoundingClientRect();
+      const overlap =
+        er.left < br.right && er.right > br.left &&
+        er.top  < br.bottom && er.bottom > br.top;
+      if (overlap) collectItem(el);
+    };
+
+    el.addEventListener("mousedown", e => {
+      if (gameState.activeMinigame !== "laundry") return;
+      e.preventDefault();
+      onDown(e.clientX, e.clientY);
+      const mm = ev => onMove(ev.clientX, ev.clientY);
+      const mu = () => {
+        document.removeEventListener("mousemove", mm);
+        document.removeEventListener("mouseup", mu);
+        onUp();
+      };
+      document.addEventListener("mousemove", mm);
+      document.addEventListener("mouseup", mu);
+    });
+
+    el.addEventListener("touchstart", e => {
+      if (gameState.activeMinigame !== "laundry") return;
+      const t = e.touches[0]; if (!t) return;
+      e.preventDefault();
+      onDown(t.clientX, t.clientY);
+      const tm = ev => {
+        const tt = ev.touches[0]; if (!tt) return;
+        onMove(tt.clientX, tt.clientY);
+      };
+      const tu = () => {
+        document.removeEventListener("touchmove", tm);
+        document.removeEventListener("touchend", tu);
+        onUp();
+      };
+      document.addEventListener("touchmove", tm, { passive: false });
+      document.addEventListener("touchend", tu);
+    }, { passive: false });
+  }
+
+  function collectItem(el) {
+    if (el.dataset.collected) return;
+    el.dataset.collected = "1";
+    if (!isService) increaseBabyMeter(6);
+    if (gameState.activeMinigame !== "laundry") return;  // יתכן ש-triggerBabyCrying ניקה
+    el.style.transition = "transform 0.35s ease, opacity 0.35s ease";
+    el.style.transform  = "scale(0.4) translateY(20px)";
+    el.style.opacity    = "0";
+    setTimeout(() => el.remove(), 360);
+    collected++;
+    progressEl.textContent = `${collected}/4 פריטים נאספו`;
+    if (collected >= 4) {
+      setTimeout(laundryComplete, 500);
+    }
+  }
+
+  function laundryComplete() {
+    if (gameState.activeMinigame !== "laundry") return;
+    runMinigameCleanup();
+    showToast(isService ? "שירות הכביסה אסף הכל 🧺" : "הכביסה במכונה 🧺");
+    completeTask("laundry");
+    endActionPhase();
+  }
+
+  gameState.minigameCleanup = () => {
+    items.forEach(el => { if (el.parentNode) el.remove(); });
+    if (bag.parentNode) bag.remove();
+    choiceButtons.innerHTML = "";
+  };
+}
+
+// ── מיני־משחק קפה ────────────────────────────────────────────────────
+function startCoffeeMinigame() {
+  const host = _minigameHost("coffee");
+  host.innerHTML = `
+    <div style="font-size:0.85rem;color:var(--charcoal);font-weight:700;">
+      ☕ קפה — אל תזוזי מהר
+    </div>
+    <div class="cup-wrap" style="position:relative;width:90px;height:80px;">
+      <div class="cup-outline" style="
+        position:absolute; left:6px; top:14px; right:18px; bottom:6px;
+        border:3px solid var(--charcoal); border-top:none;
+        border-radius: 0 0 18px 18px; overflow:hidden;
+        background: rgba(255,255,255,0.6);
+      ">
+        <div class="coffee-fill" style="
+          position:absolute; left:0; right:0; bottom:0;
+          height:0%;
+          background: linear-gradient(180deg,#6b3a1a 0%,#3d2412 100%);
+          transition: height 3s linear;
+        "></div>
+        <div class="coffee-foam" style="
+          position:absolute; left:0; right:0;
+          bottom:0; height:0%;
+          background: linear-gradient(180deg,#fff 0%, #f3e8d8 100%);
+          transition: bottom 0.8s ease 3s, opacity 0.4s;
+          opacity: 0;
+        "></div>
+      </div>
+      <div class="cup-handle" style="
+        position:absolute; right:0; top:30px; width:14px; height:26px;
+        border:3px solid var(--charcoal); border-left:none;
+        border-radius: 0 14px 14px 0;
+      "></div>
+      <div class="cup-steam" style="
+        position:absolute; left:0; right:18px; top:-4px; height:22px;
+        pointer-events:none; opacity:0;
+        transition: opacity 0.4s 0.4s;
+      ">
+        <span style="position:absolute;left:30%;top:0;width:6px;height:18px;background:rgba(255,255,255,0.55);border-radius:50%;animation:steamRise 2.4s ease-in-out infinite;"></span>
+        <span style="position:absolute;left:50%;top:0;width:6px;height:18px;background:rgba(255,255,255,0.55);border-radius:50%;animation:steamRise 2.4s ease-in-out 0.5s infinite;"></span>
+        <span style="position:absolute;left:70%;top:0;width:6px;height:18px;background:rgba(255,255,255,0.55);border-radius:50%;animation:steamRise 2.4s ease-in-out 1s infinite;"></span>
+      </div>
+    </div>
+    <div class="coffee-status" style="font-size:0.75rem;color:var(--muted);min-height:1em;">
+      מחממת...
+    </div>
+  `;
+
+  const fillEl  = host.querySelector(".coffee-fill");
+  const foamEl  = host.querySelector(".coffee-foam");
+  const steamEl = host.querySelector(".cup-steam");
+  const statusEl = host.querySelector(".coffee-status");
+
+  let phaseTimer1 = null, phaseTimer2 = null, completeTimer = null;
+  let lcx = 0, lcy = 0, lct = 0;
+
+  function startBrew() {
+    fillEl.style.transition = "height 3s linear";
+    fillEl.style.height = "100%";
+    phaseTimer1 = setTimeout(() => {
+      foamEl.style.opacity = "1";
+      foamEl.style.bottom  = "80%";
+      foamEl.style.height  = "20%";
+      steamEl.style.opacity = "0.85";
+      statusEl.textContent = "כמעט מוכן ☕";
+    }, 3050);
+    completeTimer = setTimeout(coffeeComplete, 5000);
+  }
+
+  function restartBrew() {
+    if (gameState.activeMinigame !== "coffee") return;
+    clearTimeout(phaseTimer1);
+    clearTimeout(completeTimer);
+    fillEl.style.transition = "height 0.2s ease";
+    fillEl.style.height = "0%";
+    foamEl.style.opacity = "0";
+    foamEl.style.bottom = "0";
+    foamEl.style.height = "0%";
+    steamEl.style.opacity = "0";
+    statusEl.textContent = "הקפה נשפך! 😅";
+    setTimeout(() => {
+      if (gameState.activeMinigame !== "coffee") return;
+      statusEl.textContent = "מחממת שוב...";
+      startBrew();
+    }, 800);
+  }
+
+  function spillCheck(e) {
+    if (gameState.activeMinigame !== "coffee") return;
+    const now = Date.now();
+    const dt = now - lct;
+    if (dt < 16) return;
+    const dist = Math.hypot(e.clientX - lcx, e.clientY - lcy);
+    const speed = dist / dt;
+    if (speed > 2.0) restartBrew();
+    lcx = e.clientX; lcy = e.clientY; lct = now;
+  }
+  function touchSpill(e) {
+    const t = e.touches[0]; if (!t) return;
+    spillCheck({ clientX: t.clientX, clientY: t.clientY });
+  }
+  document.addEventListener("mousemove", spillCheck);
+  document.addEventListener("touchmove", touchSpill, { passive: true });
+
+  function coffeeComplete() {
+    if (gameState.activeMinigame !== "coffee") return;
+    runMinigameCleanup();
+    restoreSanity(8);
+    showToast("+8 שפיות — חמימות בכפות הידיים.");
+    endActionPhase();
+  }
+
+  gameState.minigameCleanup = () => {
+    clearTimeout(phaseTimer1);
+    clearTimeout(phaseTimer2);
+    clearTimeout(completeTimer);
+    document.removeEventListener("mousemove", spillCheck);
+    document.removeEventListener("touchmove", touchSpill);
+    choiceButtons.innerHTML = "";
+  };
+
+  startBrew();
+}
+
+// ── מיני־משחק קריאה ──────────────────────────────────────────────────
+function startReadingMinigame() {
+  const host = _minigameHost("reading");
+  gameState.readingMode = true;  // מוריד מכפיל רעש ב-stealthMouseHandler
+
+  const pages = [
+    "לקחת נשימה. הכל בסדר.",
+    "את עושה עבודה טובה.",
+    "יום אחד כל פעם.",
+  ];
+
+  host.innerHTML = `
+    <div style="font-size:0.85rem;color:var(--charcoal);font-weight:700;">📖</div>
+    <div class="book" style="
+      position:relative; width:200px; height:96px; perspective: 800px;
+    ">
+      <div class="book-page" style="
+        position:absolute; inset:0;
+        background: linear-gradient(180deg, #fdf6e3 0%, #f3e7c4 100%);
+        border:2px solid var(--sand-dark);
+        border-radius: 8px;
+        display:flex; align-items:center; justify-content:center;
+        padding: 0.6rem 1rem;
+        font-size: 0.95rem;
+        font-style: italic;
+        color: var(--charcoal);
+        text-align:center;
+        direction:rtl;
+        line-height: 1.5;
+        transform-style: preserve-3d;
+        transition: transform 0.5s ease, opacity 0.3s ease;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+      ">${pages[0]}</div>
+    </div>
+    <div class="reading-progress" style="font-size:0.72rem;color:var(--muted);">
+      עמוד 1 מתוך 3
+    </div>
+  `;
+
+  const pageEl     = host.querySelector(".book-page");
+  const progressEl = host.querySelector(".reading-progress");
+  let idx = 0;
+  let turnTimer = null;
+
+  function flipTo(next) {
+    pageEl.style.transform = "rotateY(-90deg)";
+    pageEl.style.opacity   = "0";
+    setTimeout(() => {
+      if (gameState.activeMinigame !== "reading") return;
+      pageEl.textContent = pages[next];
+      progressEl.textContent = `עמוד ${next + 1} מתוך 3`;
+      pageEl.style.transform = "rotateY(0deg)";
+      pageEl.style.opacity   = "1";
+    }, 280);
+  }
+
+  function tick() {
+    idx++;
+    if (idx >= pages.length) {
+      finish();
+      return;
+    }
+    flipTo(idx);
+    turnTimer = setTimeout(tick, 3000);
+  }
+
+  function finish() {
+    if (gameState.activeMinigame !== "reading") return;
+    runMinigameCleanup();
+    restoreSanity(5);
+    showToast("+5 שפיות — נזכרת מי את.");
+    endActionPhase();
+  }
+
+  turnTimer = setTimeout(tick, 3000);
+
+  gameState.minigameCleanup = () => {
+    clearTimeout(turnTimer);
+    gameState.readingMode = false;
+    choiceButtons.innerHTML = "";
+  };
 }
 
 // ── מכניזם עכבר סמוי — היום הראשון ─────────────────────────────────────────────
@@ -2255,14 +2875,33 @@ function stealthMouseHandler(e) {
         if (babyEl) babyEl.style.cursor = "default";
         if (babyEl) babyEl.classList.remove("lullaby");
         document.getElementById("lullaby-hint")?.classList.add("hidden");
-        setTimeout(beginActionPhase, 800);
+
+        // ── יום נגמר? בדיקה לפני קידום, כדי לא להגיע ל-cycle+1 ── //
+        const isFinalSleep = gameState.sleepCycle + 1 >= gameState.totalCycles;
+        gameState.sleepCycle++;
+        updateHUD();
+        updateTasksPanel();
+
+        if (isFinalSleep) {
+          // נועלים את המשחק מיידית כדי שום עכבר/לחיצה לא יוכלו
+          // לפתוח עוד מחזור הרדמה לפני שהסיום מופיע.
+          gameState.endingTriggered = true;
+          gameState.stealthActive   = false;
+          gameState.lullabyPhase    = false;
+          clearSleepTimer();
+          triggerEnding();
+        } else {
+          setTimeout(beginActionPhase, 800);
+        }
       }
     } else if (speed > 1.5) {
-      increaseBabyMeter(speed * 1.5 * (gameState.babyMeterSlowdown || 1.0));
+      const readMod = gameState.readingMode ? 0.5 : 1;
+      increaseBabyMeter(speed * 1.5 * (gameState.babyMeterSlowdown || 1.0) * readMod);
     }
   } else {
     if (speed > 1.5) {
-      increaseBabyMeter(speed * 1.8 * s);
+      const readMod = gameState.readingMode ? 0.5 : 1;
+      increaseBabyMeter(speed * 1.8 * s * readMod);
     }
     document.querySelectorAll(".noisy-sprite").forEach(sprite => {
       const r = sprite.getBoundingClientRect();
@@ -2319,6 +2958,9 @@ function increaseBabyMeter(amount) {
 }
 
 function triggerBabyCrying() {
+  if (gameState.endingTriggered) return;          // היום נגמר — בלי בכי חדש
+  clearSleepTimer();
+  runMinigameCleanup();      // אם רץ מיני־משחק, מנקים אותו — המשימה לא מסומנת כבוצעה
   SoundManager.babyCry();
   if (typeof gtag !== 'undefined') gtag('event', 'baby_cried');
   gameState.stealthActive = false;
@@ -2349,6 +2991,22 @@ function triggerBabyCrying() {
 
 // ── סיומות ───────────────────────────────────────────────────────────────────
 function triggerEnding() {
+  if (gameState._endingRendered) return;          // idempotent
+  gameState._endingRendered = true;
+  gameState.endingTriggered = true;
+  clearSleepTimer();
+  runMinigameCleanup();
+  // עונש על משימות שלא בוצעו — לפני חישוב טקסט הסיום
+  const undoneLines = [];
+  if (!gameState.tasksDone.pump) {
+    drainSanity(10);
+    undoneLines.push("לא הספקת לשאוב. זה ילווה אותך.");
+  }
+  if (!gameState.tasksDone.laundry) {
+    drainSanity(5);
+    undoneLines.push("הכביסה מחכה. גם זה בסדר.");
+  }
+
   if (typeof gtag !== 'undefined') { gtag('event', 'act_complete', { act: 2 }); gtag('event', 'game_end', { outcome: 'good' }); }
   closePhone();
   setChoices([]);
@@ -2386,6 +3044,13 @@ function triggerEnding() {
     ? "חיכית. וזה הגיע."
     : "היא הגיעה בלי הוראות הפעלה, אבל את מגלה לאט לאט שאת לא צריכה לקרוא שום דבר. את פשוט לומדת להקשיב. וזה מספיק.";
 
+  const undoneBlock = undoneLines.length
+    ? `<div style="font-size:0.9rem;opacity:0.75;margin-bottom:1.3rem;
+                   line-height:1.7;">
+         ${undoneLines.map(l => `<div>${l}</div>`).join("")}
+       </div>`
+    : "";
+
   actFadeText.innerHTML = `
     <div style="max-width:400px;margin:0 auto;text-align:center;
                 line-height:2;direction:rtl;color:var(--cream);">
@@ -2397,6 +3062,7 @@ function triggerEnding() {
                   margin-bottom:1.5rem;opacity:0.85;">
         ${subText}
       </div>
+      ${undoneBlock}
       <div style="font-size:0.95rem;opacity:0.7;margin-bottom:2rem;">
         ${contextLine}
       </div>
