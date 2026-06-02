@@ -262,7 +262,13 @@ let _groupVisitCount = 0;
 // ── נתוני איש קשר ───────────────────────────────────────────────────────────
 const chatHistories = {
   oriel: [], mom: [], dad: [], maya: [], shira: [], noa: [], dana: [],
+  ronit: [], hadar: [],
 };
+
+function revealContactRow(contactId) {
+  const row = document.querySelector(`.contact-row[data-contact="${contactId}"]`);
+  if (row) row.classList.remove("hidden");
+}
 
 const CONTACT_PROMPTS = {
   oriel: () => ORIEL_WHATSAPP_PROMPT,
@@ -659,8 +665,6 @@ function showItemMenu(item) {
         }
         if (item.id === "dresser") {
           openRonitNegotiation(item);
-        } else if (item.id === "stroller") {
-          openWhatsAppGroup(null);
         } else {
           openGenericNegotiation(item);
         }
@@ -1386,24 +1390,53 @@ function openWhatsAppGroup(item) {
 }
 
 // ── משא ומתן AI עם רונית (שידה) ──────────────────────────────────────────
-function openRonitNegotiation(item) {
+function openRonitNegotiation(item, opts = {}) {
   console.log("[openRonitNegotiation] called");
-  gameState.negotiating = true;
-  gameState.roniConvoHistory = [];
+  const fromContact = !!opts.fromContact;
+  const dealDone = !!(item && item.isSecured);
+  gameState.negotiating = !dealDone;
 
   phoneAppName.textContent = "🛋️ רונית (שידה)";
   $("phone-status-bar").style.background = "#25d366";
   phoneContent.innerHTML = "";
   phoneInputArea.classList.remove("hidden");
   phoneOverlay.classList.remove("hidden");
+  revealContactRow("ronit");
 
-  addChatBubble("רונית", "שלום! השידה עולה 500 שקל. מצב מעולה, כמעט לא הייתה בשימוש. מעניין אותך?", "ronit");
+  const history = chatHistories.ronit;
+  // alias retained for any legacy reads
+  gameState.roniConvoHistory = history;
+
+  if (history.length === 0) {
+    const greeting = "שלום! השידה עולה 500 שקל. מצב מעולה, כמעט לא הייתה בשימוש. מעניין אותך?";
+    history.push({ role: "model", text: greeting });
+  }
+  history.forEach(msg => {
+    addChatBubble(msg.role === "user" ? "את" : "רונית",
+                  msg.text,
+                  msg.role === "user" ? "player" : "ronit");
+  });
+
+  const chatBackBtn = document.getElementById("chat-back-btn");
+  if (fromContact && chatBackBtn) {
+    chatBackBtn.classList.remove("hidden");
+    chatBackBtn.onclick = () => {
+      chatBackBtn.classList.add("hidden");
+      gameState.negotiating = false;
+      openPhoneHome();
+    };
+  }
 
   phoneCloseBtn.onclick = () => {
     gameState.negotiating = false;
     closePhone();
-    showItemMenu(item);
+    if (!fromContact && !dealDone) showItemMenu(item);
   };
+
+  if (dealDone) {
+    phoneInputArea.classList.add("hidden");
+    return;
+  }
 
   async function sendMessage() {
     const msg = phoneTextInput.value.trim();
@@ -1488,29 +1521,51 @@ function openRonitNegotiation(item) {
 
 
 // ── משא ומתן AI עם הדר (עגלה) ──────────────────────────────────────────
-function openHadarNegotiation() {
-  // מוצא את פריט העגלה
+function openHadarNegotiation(opts = {}) {
+  const fromContact = !!opts.fromContact;
   const item = gameState.items.find(i => i.id === "stroller");
-  if (!item || item.isSecured) {
-    narrate("העגלה כבר טופלה.");
-    return;
-  }
+  if (!item) return;
+  const dealDone = !!item.isSecured;
 
-  gameState.negotiating = true;
-  const history = [];
+  gameState.negotiating = !dealDone;
+  const history = chatHistories.hadar;
 
   phoneAppName.textContent = "🛒 הדר (עגלה)";
   $("phone-status-bar").style.background = "#25d366";
   phoneContent.innerHTML = "";
   phoneInputArea.classList.remove("hidden");
   phoneOverlay.classList.remove("hidden");
+  revealContactRow("hadar");
 
-  addChatBubble("הדר", "היי! ראיתי שפנית בנוגע לעגלה. 700 שקל, מצב מצוין, הבת שלי השתמשה בה בקושי. מעניין אותך?", "ronit");
+  if (history.length === 0) {
+    const greeting = "היי! ראיתי שפנית בנוגע לעגלה. 700 שקל, מצב מצוין, הבת שלי השתמשה בה בקושי. מעניין אותך?";
+    history.push({ role: "model", text: greeting });
+  }
+  history.forEach(msg => {
+    addChatBubble(msg.role === "user" ? "את" : "הדר",
+                  msg.text,
+                  msg.role === "user" ? "player" : "ronit");
+  });
+
+  const chatBackBtn = document.getElementById("chat-back-btn");
+  if (fromContact && chatBackBtn) {
+    chatBackBtn.classList.remove("hidden");
+    chatBackBtn.onclick = () => {
+      chatBackBtn.classList.add("hidden");
+      gameState.negotiating = false;
+      openPhoneHome();
+    };
+  }
 
   phoneCloseBtn.onclick = () => {
     gameState.negotiating = false;
     closePhone();
   };
+
+  if (dealDone) {
+    phoneInputArea.classList.add("hidden");
+    return;
+  }
 
   async function sendMessage() {
     const msg = phoneTextInput.value.trim();
@@ -2436,6 +2491,11 @@ function init() {
         document.getElementById("phone-home").classList.add("hidden");
         openWhatsAppGroup(null);
         return;
+      } else if (contact === "ronit") {
+        const dresser = gameState.items.find(i => i.id === "dresser");
+        openRonitNegotiation(dresser, { fromContact: true });
+      } else if (contact === "hadar") {
+        openHadarNegotiation({ fromContact: true });
       } else {
         openContactChat(contact);
       }
