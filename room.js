@@ -39,11 +39,11 @@ const ASSETS = {
 
 // ── מיקומי פריטים (ברירת מחדל — אחוזים: left, bottom, width) ──
 const ITEM_LAYOUT = {
-  crib:     { left: "2%",  bottom: "4%",  width: "24%" },
-  dresser:  { left: "22%", bottom: "4%",  width: "20%" },
-  stroller: { left: "38%", bottom: "2%",  width: "22%" },
-  carseat:  { left: "57%", bottom: "2%",  width: "20%" },
-  clothes:  { left: "74%", bottom: "5%",  width: "18%" },
+  crib:     { left: "5%",  bottom: "8%",  width: "23%" },
+  dresser:  { left: "26%", bottom: "6%",  width: "18%" },
+  stroller: { left: "43%", bottom: "4%",  width: "18%" },
+  carseat:  { left: "60%", bottom: "3%",  width: "16%" },
+  clothes:  { left: "76%", bottom: "3%",  width: "14%" },
 };
 
 // ── אתחול רקע החדר ────────────────────────────────────────────
@@ -104,9 +104,13 @@ function renderItem(item) {
   }
 
   if (item.id === "crib") {
-    const isAct2     = typeof gameState !== "undefined" && gameState.act === 2;
-    const isSleeping = isAct2 && !gameState.lullabyPhase && gameState.stealthActive;
-    if (isSleeping) {
+    // Sleeping variant only in act 2 action phase (baby is asleep inside crib).
+    // Act 1, act 2 lullaby (baby crying outside), act 2 crying → empty crib.
+    const isAct2 = typeof gameState !== "undefined" && gameState.act === 2;
+    const showWithBaby = isAct2 &&
+                         gameState.stealthActive &&
+                         !gameState.lullabyPhase;
+    if (showWithBaby) {
       src = item._worn ? assetGroup.usedSleeping : assetGroup.newSleeping;
     } else {
       src = item._worn ? assetGroup.used : assetGroup.new;
@@ -127,24 +131,28 @@ function renderItem(item) {
     el.style.cssText = `
       position: absolute;
       object-fit: contain;
-      object-position: bottom;
+      object-position: bottom center;
       z-index: 1;
       pointer-events: auto;
       cursor: grab;
       opacity: 0;
       transform: scale(0.8) translateY(20px);
       transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.34,1.56,0.64,1);
+      filter: drop-shadow(2px 8px 6px rgba(0,0,0,0.25));
     `;
     container.appendChild(el);
     _attachItemHandles(el, item, container);
   }
 
-  el.src           = src;
-  el.style.left    = layout.left;
-  el.style.bottom  = layout.bottom;
-  el.style.width   = layout.width;
-  el.style.height  = "auto";
-  el.style.display = "block";
+  el.src                  = src;
+  el.style.left           = layout.left;
+  el.style.bottom         = layout.bottom;
+  el.style.width          = layout.width;
+  el.style.height         = "auto";
+  el.style.objectFit      = "contain";
+  el.style.objectPosition = "bottom center";
+  el.style.filter         = "drop-shadow(2px 8px 6px rgba(0,0,0,0.25))";
+  el.style.display        = "block";
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
@@ -250,8 +258,8 @@ function _attachItemHandles(el, item, container) {
     el.style.transition = "none";
 
     function onMove(clientX, clientY) {
-      curL = Math.max(0, Math.min(90, init.left   + (clientX - startX) / cr.width  * 100));
-      curB = Math.max(0, Math.min(90, init.bottom - (clientY - startY) / cr.height * 100));
+      curL = Math.max(0, Math.min(85, init.left   + (clientX - startX) / cr.width  * 100));
+      curB = Math.max(0, Math.min(35, init.bottom - (clientY - startY) / cr.height * 100));
       el.style.left   = curL.toFixed(1) + "%";
       el.style.bottom = curB.toFixed(1) + "%";
       syncHandle();

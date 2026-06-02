@@ -1894,9 +1894,13 @@ function beginAct2() {
     sidePanel.style.background = "rgba(253,240,232,0.98)";
   }
   const tasksPanel = document.getElementById("panel-tasks");
-  tasksPanel.style.display = "flex";
-  tasksPanel.classList.add("highlight");
-  setTimeout(() => tasksPanel.classList.remove("highlight"), 3500);
+  if (tasksPanel) {
+    tasksPanel.style.display = "flex";
+    tasksPanel.style.background = "rgba(138,171,132,0.3)";
+    setTimeout(() => {
+      tasksPanel.style.background = "";
+    }, 2000);
+  }
 
   if (gameState.superstition) {
     applySuperstitionFate();
