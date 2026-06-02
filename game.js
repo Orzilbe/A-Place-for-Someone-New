@@ -2616,14 +2616,18 @@ function startCoffeeMinigame() {
           height:0%;
           background: linear-gradient(180deg,#6b3a1a 0%,#3d2412 100%);
           transition: height 3s linear;
-        "></div>
-        <div class="coffee-foam" style="
-          position:absolute; left:0; right:0;
-          bottom:0; height:0%;
-          background: linear-gradient(180deg,#fff 0%, #f3e8d8 100%);
-          transition: bottom 0.8s ease 3s, opacity 0.4s;
-          opacity: 0;
-        "></div>
+        ">
+          <!-- foam rides on top of the liquid: anchored to top:0 of the
+               fill column, so as the fill rises so does the foam. -->
+          <div class="coffee-foam" style="
+            position:absolute; left:0; right:0; top:0;
+            height:22%;
+            background: linear-gradient(180deg,#fff 0%, #f3e8d8 100%);
+            border-radius: 50% 50% 0 0 / 60% 60% 0 0;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+          "></div>
+        </div>
       </div>
       <div class="cup-handle" style="
         position:absolute; right:0; top:30px; width:14px; height:26px;
@@ -2657,11 +2661,9 @@ function startCoffeeMinigame() {
     fillEl.style.transition = "height 3s linear";
     fillEl.style.height = "100%";
     phaseTimer1 = setTimeout(() => {
-      foamEl.style.opacity = "1";
-      foamEl.style.bottom  = "80%";
-      foamEl.style.height  = "20%";
+      foamEl.style.opacity  = "1";
       steamEl.style.opacity = "0.85";
-      statusEl.textContent = "כמעט מוכן ☕";
+      statusEl.textContent  = "כמעט מוכן ☕";
     }, 3050);
     completeTimer = setTimeout(coffeeComplete, 5000);
   }
@@ -2671,10 +2673,8 @@ function startCoffeeMinigame() {
     clearTimeout(phaseTimer1);
     clearTimeout(completeTimer);
     fillEl.style.transition = "height 0.2s ease";
-    fillEl.style.height = "0%";
-    foamEl.style.opacity = "0";
-    foamEl.style.bottom = "0";
-    foamEl.style.height = "0%";
+    fillEl.style.height   = "0%";
+    foamEl.style.opacity  = "0";
     steamEl.style.opacity = "0";
     statusEl.textContent = "הקפה נשפך! 😅";
     setTimeout(() => {
@@ -2735,24 +2735,29 @@ function startReadingMinigame() {
   host.innerHTML = `
     <div style="font-size:0.85rem;color:var(--charcoal);font-weight:700;">📖</div>
     <div class="book" style="
-      position:relative; width:200px; height:96px; perspective: 800px;
+      position:relative; width:220px; height:104px;
+      background: linear-gradient(180deg, #fdf6e3 0%, #f3e7c4 100%);
+      border:2px solid var(--sand-dark);
+      border-radius: 8px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+      overflow:hidden;
     ">
+      <!-- central crease — the only static decoration -->
+      <div style="position:absolute; top:0; bottom:0; left:50%;
+                  width:1px; background:rgba(0,0,0,0.12);"></div>
+      <!-- The text element fades between pages; the book itself never moves. -->
       <div class="book-page" style="
         position:absolute; inset:0;
-        background: linear-gradient(180deg, #fdf6e3 0%, #f3e7c4 100%);
-        border:2px solid var(--sand-dark);
-        border-radius: 8px;
         display:flex; align-items:center; justify-content:center;
         padding: 0.6rem 1rem;
-        font-size: 0.95rem;
+        font-size: 0.98rem;
         font-style: italic;
         color: var(--charcoal);
         text-align:center;
         direction:rtl;
-        line-height: 1.5;
-        transform-style: preserve-3d;
-        transition: transform 0.5s ease, opacity 0.3s ease;
-        box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+        line-height: 1.6;
+        opacity: 1;
+        transition: opacity 0.4s ease;
       ">${pages[0]}</div>
     </div>
     <div class="reading-progress" style="font-size:0.72rem;color:var(--muted);">
@@ -2765,16 +2770,14 @@ function startReadingMinigame() {
   let idx = 0;
   let turnTimer = null;
 
-  function flipTo(next) {
-    pageEl.style.transform = "rotateY(-90deg)";
-    pageEl.style.opacity   = "0";
+  function crossfadeTo(next) {
+    pageEl.style.opacity = "0";
     setTimeout(() => {
       if (gameState.activeMinigame !== "reading") return;
-      pageEl.textContent = pages[next];
+      pageEl.textContent     = pages[next];
       progressEl.textContent = `עמוד ${next + 1} מתוך 3`;
-      pageEl.style.transform = "rotateY(0deg)";
       pageEl.style.opacity   = "1";
-    }, 280);
+    }, 400);
   }
 
   function tick() {
@@ -2783,7 +2786,7 @@ function startReadingMinigame() {
       finish();
       return;
     }
-    flipTo(idx);
+    crossfadeTo(idx);
     turnTimer = setTimeout(tick, 3000);
   }
 
