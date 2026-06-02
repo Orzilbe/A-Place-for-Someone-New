@@ -23,7 +23,12 @@ html, body {
   background: var(--cream);
   color: var(--charcoal);
   overflow: hidden;
-  /* RTL is set via dir="rtl" on <html> */
+  /* RTL is set via dir="rtl" on <html>, reinforce in CSS so any
+     descendant that doesn't explicitly opt into LTR inherits RTL —
+     this is what keeps Hebrew sentence-final punctuation (. ! ? :)
+     on the visual LEFT end of the line. */
+  direction: rtl;
+  text-align: start;
 }
 
 button {
@@ -50,6 +55,10 @@ body {
   flex: 1;
   overflow: hidden;
   min-height: 0;
+  /* LTR here is intentional — it makes flex `order: 1/2` lay out
+     game-wrapper on the left and side-panel on the right.
+     Every text-bearing descendant must re-declare `direction: rtl`
+     so Hebrew punctuation lands at the visual left end. */
   direction: ltr;
 }
 
@@ -61,6 +70,7 @@ body {
   flex-direction: column;
   overflow: hidden;
   min-height: 0;
+  direction: rtl;
 }
 
 /* ─── Side Panel ───────────────────────────────────────── */
@@ -174,6 +184,7 @@ body {
   overflow: hidden;
   background: var(--cream);
   width: 100%;
+  direction: rtl;
 }
 
 #room-bg {
@@ -344,19 +355,23 @@ body {
   border-top: 2px solid var(--rose);
   padding: 0.6rem 1rem;
   gap: 0.5rem;
+  direction: rtl;
 }
 
 #narration-box {
   flex: 1;
   overflow: hidden;
   min-height: 0;
+  direction: rtl;
 }
 
 #narration-text {
   font-size: 0.85rem;
   line-height: 1.55;
   color: var(--charcoal);
+  direction: rtl;
   text-align: right;
+  unicode-bidi: plaintext;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -370,6 +385,7 @@ body {
   gap: 0.5rem;
   justify-content: center;
   overflow: hidden;
+  direction: rtl;
 }
 
 #choice-buttons > div {
@@ -392,6 +408,9 @@ body {
   background: var(--sand);
   color: var(--charcoal);
   border: 1.5px solid var(--sand-dark);
+  direction: rtl;
+  unicode-bidi: plaintext;
+  text-align: center;
 }
 
 #choice-buttons button:hover { background: var(--rose); border-color: var(--rose-dark); }
@@ -466,7 +485,9 @@ body {
   line-height: 1.5;
   position: relative;
   word-break: break-word;
+  direction: rtl;
   text-align: right;
+  unicode-bidi: plaintext;
 }
 
 /*
@@ -632,6 +653,8 @@ body {
   z-index: 300;
   white-space: nowrap;
   direction: rtl;
+  text-align: center;
+  unicode-bidi: plaintext;
 }
 #toast.show { opacity: 1; }
 
