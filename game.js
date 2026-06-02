@@ -1399,8 +1399,10 @@ function openRonitNegotiation(item, opts = {}) {
   phoneAppName.textContent = "🛋️ רונית (שידה)";
   $("phone-status-bar").style.background = "#25d366";
   phoneContent.innerHTML = "";
+  phoneContent.classList.remove("hidden");
   phoneInputArea.classList.remove("hidden");
   phoneOverlay.classList.remove("hidden");
+  document.getElementById("phone-home").classList.add("hidden");
   revealContactRow("ronit");
 
   const history = chatHistories.ronit;
@@ -1533,8 +1535,10 @@ function openHadarNegotiation(opts = {}) {
   phoneAppName.textContent = "🛒 הדר (עגלה)";
   $("phone-status-bar").style.background = "#25d366";
   phoneContent.innerHTML = "";
+  phoneContent.classList.remove("hidden");
   phoneInputArea.classList.remove("hidden");
   phoneOverlay.classList.remove("hidden");
+  document.getElementById("phone-home").classList.add("hidden");
   revealContactRow("hadar");
 
   if (history.length === 0) {
@@ -2240,7 +2244,10 @@ function stealthMouseHandler(e) {
       if (gameState.babyMeter === 0) {
         SoundManager.lullabySuccess();
         gameState.lullabyPhase = false;
-        gameState.stealthActive = false;
+        // Baby is now asleep → stealth period begins. Must flip to true
+        // BEFORE renderRoom(), otherwise renderItem(crib) sees the old
+        // value and reverts the crib to the empty asset, hiding the baby.
+        gameState.stealthActive = true;
         renderBaby("sleeping");
         renderRoom();
         const babyEl = document.getElementById("room-baby");
