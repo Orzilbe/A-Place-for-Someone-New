@@ -2336,32 +2336,53 @@ function startPumpMinigame(mode) {
     updateHUD();
   }
 
-  // בקבוק + כפתור/הודעה
+  if (!document.getElementById('mg-pump-style')) {
+    const s = document.createElement('style');
+    s.id = 'mg-pump-style';
+    s.textContent = [
+      '.mg-bottle{position:relative;width:130px;height:260px;}',
+      '.mg-teat{position:absolute;top:-2px;left:50%;transform:translateX(-50%);width:36px;height:44px;background:radial-gradient(ellipse at 42% 28%,#fbf1dd 0%,#efdcbb 62%,#e2c99e 100%);border-radius:46% 46% 40% 40%/62% 62% 38% 38%;box-shadow:inset 0 -4px 7px rgba(180,140,90,.22),inset 3px 4px 6px rgba(255,255,255,.6);z-index:4;filter:url(#mg-wc);}',
+      '.mg-teat::after{content:"";position:absolute;top:8px;left:10px;width:8px;height:18px;border-radius:50%;background:linear-gradient(160deg,rgba(255,255,255,.75),rgba(255,255,255,0));}',
+      '.mg-teat::before{content:"";position:absolute;bottom:1px;left:50%;transform:translateX(-50%);width:40px;height:8px;border-radius:50%;background:linear-gradient(180deg,#e9d4ac,#dcc193);box-shadow:inset 0 -1px 2px rgba(150,110,60,.3);}',
+      '.mg-collar{position:absolute;top:30px;left:50%;transform:translateX(-50%);width:80px;height:22px;border-radius:7px;background:linear-gradient(180deg,#f5b9bf,#e8b4b8 60%,#d99aa0);box-shadow:inset 0 -3px 4px rgba(150,90,95,.3),0 2px 4px rgba(0,0,0,.08);z-index:3;filter:url(#mg-wc);}',
+      '.mg-bottle-body{position:absolute;top:46px;left:50%;transform:translateX(-50%);width:110px;height:208px;border-radius:20px 20px 40px 40px/26px 26px 54px 54px;background:linear-gradient(105deg,rgba(255,255,255,.55),rgba(232,224,212,.4));box-shadow:inset 12px 0 20px rgba(255,255,255,.6),inset -14px 0 22px rgba(180,170,155,.35),0 12px 20px rgba(120,110,90,.18);overflow:hidden;border:2px solid rgba(255,255,255,.5);filter:url(#mg-wc);}',
+      '.mg-milk{position:absolute;left:0;right:0;bottom:0;height:0%;background:linear-gradient(180deg,#fbfaf6 0%,#f6f2ea 60%,#efe9dd 100%);transition:height .65s cubic-bezier(.34,1.3,.5,1);}',
+      '.mg-milk::before{content:"";position:absolute;top:-9px;left:-10%;width:120%;height:18px;background:radial-gradient(ellipse 28px 10px at 20% 50%,#fbfaf6 60%,transparent 70%),radial-gradient(ellipse 30px 10px at 55% 60%,#fbfaf6 60%,transparent 70%),radial-gradient(ellipse 28px 10px at 85% 50%,#fbfaf6 60%,transparent 70%);animation:mgWave 3s ease-in-out infinite;}',
+      '@keyframes mgWave{0%,100%{transform:translateX(0)}50%{transform:translateX(-10px)}}',
+      '.mg-bottle-shine{position:absolute;top:12px;left:16px;width:12px;height:140px;border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,.75),rgba(255,255,255,0));z-index:5;}',
+      '.mg-ticks{position:absolute;top:46px;bottom:0;right:0;transform:translateX(32px);z-index:6;}',
+      '.mg-ticks i{position:absolute;right:0;width:12px;height:2px;border-radius:2px;background:rgba(120,110,95,.4);}',
+      '.mg-ticks i.big{width:18px;}',
+      '.mg-ticks i span{position:absolute;right:16px;top:-7px;font-size:.58rem;color:var(--muted);}',
+      '@keyframes mgSqueeze{0%,100%{transform:scaleY(1)}40%{transform:scaleY(.9) scaleX(1.03)}}',
+      '.mg-bottle.pulse{animation:mgSqueeze .4s ease;}'
+    ].join('');
+    document.head.appendChild(s);
+  }
+  if (!document.getElementById('mg-wc-filter')) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.id = 'mg-wc-filter';
+    svg.setAttribute('width', '0');
+    svg.setAttribute('height', '0');
+    svg.style.cssText = 'position:absolute;overflow:hidden;';
+    svg.innerHTML = '<filter id="mg-wc"><feTurbulence type="fractalNoise" baseFrequency="0.013" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="6" xChannelSelector="R" yChannelSelector="G"/></filter>';
+    document.body.insertBefore(svg, document.body.firstChild);
+  }
+
   host.innerHTML = `
     <div style="font-size:0.85rem;color:var(--charcoal);font-weight:700;">
       ${isElectric ? "🔇 משאבה חשמלית" : "🔉 משאבה ידנית"}
     </div>
-    <div class="bottle-wrap" style="position:relative;width:60px;height:110px;">
-      <div class="bottle-outline" style="
-        position:absolute; inset:0;
-        border:3px solid var(--charcoal);
-        border-top: 3px solid transparent;
-        border-radius: 10px 10px 14px 14px;
-        background: rgba(255,255,255,0.4);
-        overflow: hidden;
-      ">
-        <div class="bottle-fill" style="
-          position:absolute; left:0; right:0; bottom:0;
-          height:0%;
-          background: linear-gradient(180deg, #fff8e7 0%, #f3e6c4 100%);
-          transition: height 0.25s ease;
-        "></div>
+    <div style="position:relative;display:flex;align-items:flex-end;">
+      <div class="mg-bottle" id="mg-bottle">
+        <div class="mg-teat"></div>
+        <div class="mg-collar"></div>
+        <div class="mg-bottle-body">
+          <div class="mg-milk" id="mg-milk"></div>
+          <div class="mg-bottle-shine"></div>
+        </div>
+        <div class="mg-ticks" id="mg-ticks"></div>
       </div>
-      <div style="
-        position:absolute; top:-10px; left:50%; transform:translateX(-50%);
-        width:24px; height:10px; border:3px solid var(--charcoal);
-        border-bottom:none; border-radius:6px 6px 0 0; background:var(--cream);
-      "></div>
     </div>
     <div class="pump-progress" style="font-size:0.78rem;color:var(--muted);">
       ${isElectric ? "מתמלא..." : "0/10 לחיצות"}
@@ -2376,7 +2397,17 @@ function startPumpMinigame(mode) {
     `}
   `;
 
-  const fillEl     = host.querySelector(".bottle-fill");
+  // build measurement ticks
+  const ticksEl = host.querySelector('#mg-ticks');
+  for (let p = 10; p <= 100; p += 10) {
+    const i = document.createElement('i');
+    i.style.top = (100 - p) + '%';
+    if (p % 50 === 0) { i.className = 'big'; i.innerHTML = '<span>' + Math.round(150 * p / 100) + '</span>'; }
+    ticksEl.appendChild(i);
+  }
+
+  const fillEl     = host.querySelector("#mg-milk");
+  const bottleEl   = host.querySelector("#mg-bottle");
   const progressEl = host.querySelector(".pump-progress");
 
   if (isElectric) {
@@ -2401,6 +2432,7 @@ function startPumpMinigame(mode) {
       clicks++;
       fillEl.style.height = (clicks * 10) + "%";
       progressEl.textContent = `${clicks}/10 לחיצות`;
+      bottleEl.classList.remove('pulse'); void bottleEl.offsetWidth; bottleEl.classList.add('pulse');
       SoundManager.softClick();
       increaseBabyMeter(2);
       // אם התינוקת התעוררה (מד 100) — runMinigameCleanup כבר רץ דרך triggerBabyCrying
@@ -2600,48 +2632,62 @@ function startLaundryMinigame(mode) {
 // ── מיני־משחק קפה ────────────────────────────────────────────────────
 function startCoffeeMinigame() {
   const host = _minigameHost("coffee");
+
+  if (!document.getElementById('mg-coffee-style')) {
+    const s = document.createElement('style');
+    s.id = 'mg-coffee-style';
+    s.textContent = [
+      '.mg-coffee-scene{position:relative;width:260px;height:280px;display:flex;align-items:flex-end;justify-content:center;}',
+      '.mg-pour{position:absolute;top:0;left:calc(50% + 6px);transform:translateX(-50%);width:11px;height:140px;z-index:6;transform-origin:top center;opacity:0;}',
+      '.mg-pour i{position:absolute;inset:0;border-radius:46% 46% 40% 40%;background:linear-gradient(180deg,#3a2414,#5e3a22 60%,#6b4126);box-shadow:inset 2px 0 3px rgba(255,255,255,.18);filter:url(#mg-wc);}',
+      '.mg-pour i::after{content:"";position:absolute;top:0;left:2px;width:3px;height:100%;background:linear-gradient(180deg,rgba(255,235,205,.55),transparent);}',
+      '.mg-pour.go{animation:mgPourIn .5s ease forwards,mgPourOut .6s ease 3.2s forwards;}',
+      '@keyframes mgPourIn{0%{opacity:0;transform:translateX(-50%) scaleY(.2)}100%{opacity:1;transform:translateX(-50%) scaleY(1)}}',
+      '@keyframes mgPourOut{0%{opacity:1;transform:translateX(-50%) scaleY(1)}100%{opacity:0;transform:translateX(-50%) scaleY(.1)}}',
+      '.mg-steam{position:absolute;bottom:195px;left:50%;width:100px;height:90px;transform:translateX(-50%);pointer-events:none;opacity:0;transition:opacity 1.2s ease;}',
+      '.mg-steam.go{opacity:1;}',
+      '.mg-steam span{position:absolute;bottom:0;width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 50% 40%,rgba(255,255,255,.9),rgba(243,226,205,.2) 70%,transparent);filter:blur(2px);animation:mgSteam 3.4s ease-in-out infinite;}',
+      '.mg-steam span:nth-child(1){left:20px;animation-delay:0s;}',
+      '.mg-steam span:nth-child(2){left:40px;animation-delay:.9s;}',
+      '.mg-steam span:nth-child(3){left:58px;animation-delay:1.8s;}',
+      '.mg-steam span:nth-child(4){left:32px;animation-delay:2.5s;}',
+      '@keyframes mgSteam{0%{transform:translateY(0) scale(.7);opacity:0;}18%{opacity:.7;}55%{transform:translateY(-48px) scale(1.5) translateX(-8px);opacity:.4;}100%{transform:translateY(-82px) scale(2.2) translateX(6px);opacity:0;}}',
+      '.mg-mug-wrap{position:relative;width:170px;height:170px;margin-bottom:8px;}',
+      '.mg-handle{position:absolute;top:48px;right:-32px;width:50px;height:76px;border:12px solid rgba(196,212,192,.5);border-radius:50%;border-left-color:transparent;border-top-color:transparent;transform:rotate(20deg);box-shadow:inset 1px 1px 3px rgba(255,255,255,.5);filter:url(#mg-wc);}',
+      '.mg-mug{position:absolute;inset:0;background:linear-gradient(110deg,rgba(255,255,255,.42) 0%,rgba(196,212,192,.3) 40%,rgba(150,176,150,.28) 100%);border:2px solid rgba(255,255,255,.6);border-radius:18px 18px 58px 58px/14px 14px 52px 52px;box-shadow:inset 14px 0 22px rgba(255,255,255,.4),inset -16px 0 24px rgba(120,150,120,.18),0 14px 22px rgba(120,110,90,.16);overflow:hidden;filter:url(#mg-wc);}',
+      '.mg-mug::before{content:"";position:absolute;top:12px;right:18px;width:13px;height:110px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(255,255,255,0));z-index:5;}',
+      '.mg-well{position:absolute;top:5px;left:5px;right:5px;bottom:5px;border-radius:14px 14px 54px 54px/10px 10px 50px 50px;overflow:hidden;z-index:2;}',
+      '.mg-coffee-fill{position:absolute;left:0;right:0;bottom:0;height:0%;background:linear-gradient(180deg,#6b4327 0%,#5a361f 30%,#3a2414 100%);box-shadow:inset 22px 16px 36px rgba(150,96,54,.45),inset -18px -8px 26px rgba(20,10,4,.35);}',
+      '.mg-crema{position:absolute;top:0;left:0;right:0;height:22%;background:linear-gradient(180deg,#f6e8ce 0%,#f0ddb8 45%,#cf9f63 85%,#b98a4e 100%);border-radius:50% 50% 0 0/60% 60% 0 0;opacity:0;transition:opacity 0.5s ease;}'
+    ].join('');
+    document.head.appendChild(s);
+  }
+  if (!document.getElementById('mg-wc-filter')) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.id = 'mg-wc-filter';
+    svg.setAttribute('width', '0');
+    svg.setAttribute('height', '0');
+    svg.style.cssText = 'position:absolute;overflow:hidden;';
+    svg.innerHTML = '<filter id="mg-wc"><feTurbulence type="fractalNoise" baseFrequency="0.013" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="6" xChannelSelector="R" yChannelSelector="G"/></filter>';
+    document.body.insertBefore(svg, document.body.firstChild);
+  }
+
   host.innerHTML = `
     <div style="font-size:0.85rem;color:var(--charcoal);font-weight:700;">
       ☕ קפה — אל תזוזי מהר
     </div>
-    <div class="cup-wrap" style="position:relative;width:90px;height:80px;">
-      <div class="cup-outline" style="
-        position:absolute; left:6px; top:14px; right:18px; bottom:6px;
-        border:3px solid var(--charcoal); border-top:none;
-        border-radius: 0 0 18px 18px; overflow:hidden;
-        background: rgba(255,255,255,0.6);
-      ">
-        <div class="coffee-fill" style="
-          position:absolute; left:0; right:0; bottom:0;
-          height:0%;
-          background: linear-gradient(180deg,#6b3a1a 0%,#3d2412 100%);
-          transition: height 3s linear;
-        ">
-          <!-- foam rides on top of the liquid: anchored to top:0 of the
-               fill column, so as the fill rises so does the foam. -->
-          <div class="coffee-foam" style="
-            position:absolute; left:0; right:0; top:0;
-            height:22%;
-            background: linear-gradient(180deg,#fff 0%, #f3e8d8 100%);
-            border-radius: 50% 50% 0 0 / 60% 60% 0 0;
-            opacity: 0;
-            transition: opacity 0.5s ease;
-          "></div>
+    <div class="mg-coffee-scene">
+      <div class="mg-steam" id="mg-steam"><span></span><span></span><span></span><span></span></div>
+      <div class="mg-pour" id="mg-pour"><i></i></div>
+      <div class="mg-mug-wrap">
+        <div class="mg-handle"></div>
+        <div class="mg-mug">
+          <div class="mg-well">
+            <div class="mg-coffee-fill" id="mg-coffee-fill">
+              <div class="mg-crema" id="mg-crema"></div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="cup-handle" style="
-        position:absolute; right:0; top:30px; width:14px; height:26px;
-        border:3px solid var(--charcoal); border-left:none;
-        border-radius: 0 14px 14px 0;
-      "></div>
-      <div class="cup-steam" style="
-        position:absolute; left:0; right:18px; top:-4px; height:22px;
-        pointer-events:none; opacity:0;
-        transition: opacity 0.4s 0.4s;
-      ">
-        <span style="position:absolute;left:30%;top:0;width:6px;height:18px;background:rgba(255,255,255,0.55);border-radius:50%;animation:steamRise 2.4s ease-in-out infinite;"></span>
-        <span style="position:absolute;left:50%;top:0;width:6px;height:18px;background:rgba(255,255,255,0.55);border-radius:50%;animation:steamRise 2.4s ease-in-out 0.5s infinite;"></span>
-        <span style="position:absolute;left:70%;top:0;width:6px;height:18px;background:rgba(255,255,255,0.55);border-radius:50%;animation:steamRise 2.4s ease-in-out 1s infinite;"></span>
       </div>
     </div>
     <div class="coffee-status" style="font-size:0.75rem;color:var(--muted);min-height:1em;">
@@ -2649,21 +2695,23 @@ function startCoffeeMinigame() {
     </div>
   `;
 
-  const fillEl  = host.querySelector(".coffee-fill");
-  const foamEl  = host.querySelector(".coffee-foam");
-  const steamEl = host.querySelector(".cup-steam");
+  const fillEl   = host.querySelector("#mg-coffee-fill");
+  const foamEl   = host.querySelector("#mg-crema");
+  const steamEl  = host.querySelector("#mg-steam");
+  const pourEl   = host.querySelector("#mg-pour");
   const statusEl = host.querySelector(".coffee-status");
 
   let phaseTimer1 = null, phaseTimer2 = null, completeTimer = null;
   let lcx = 0, lcy = 0, lct = 0;
 
   function startBrew() {
+    pourEl.classList.remove('go'); void pourEl.offsetWidth; pourEl.classList.add('go');
     fillEl.style.transition = "height 3s linear";
     fillEl.style.height = "100%";
     phaseTimer1 = setTimeout(() => {
-      foamEl.style.opacity  = "1";
-      steamEl.style.opacity = "0.85";
-      statusEl.textContent  = "כמעט מוכן ☕";
+      foamEl.style.opacity = "1";
+      steamEl.classList.add('go');
+      statusEl.textContent = "כמעט מוכן ☕";
     }, 3050);
     completeTimer = setTimeout(coffeeComplete, 5000);
   }
@@ -2675,7 +2723,8 @@ function startCoffeeMinigame() {
     fillEl.style.transition = "height 0.2s ease";
     fillEl.style.height   = "0%";
     foamEl.style.opacity  = "0";
-    steamEl.style.opacity = "0";
+    steamEl.classList.remove('go');
+    pourEl.classList.remove('go');
     statusEl.textContent = "הקפה נשפך! 😅";
     setTimeout(() => {
       if (gameState.activeMinigame !== "coffee") return;
@@ -2732,52 +2781,90 @@ function startReadingMinigame() {
     "יום אחד כל פעם.",
   ];
 
+  if (!document.getElementById('mg-book-style')) {
+    const s = document.createElement('style');
+    s.id = 'mg-book-style';
+    s.textContent = [
+      '.mg-book{position:relative;width:min(420px,86vw);height:260px;perspective:1600px;filter:drop-shadow(0 14px 20px rgba(120,100,80,.2));}',
+      '.mg-cover{position:absolute;inset:-12px -16px -18px;background:linear-gradient(120deg,#cdb79a,#b89a78);border-radius:12px 16px 16px 12px;box-shadow:inset 0 0 0 3px rgba(255,255,255,.12);}',
+      '.mg-spread{position:absolute;inset:0;display:flex;border-radius:7px;overflow:hidden;background:#fbf4e9;}',
+      '.mg-page-half{flex:1;position:relative;background:linear-gradient(var(--mg-ang,100deg),#fbf4e9 0%,#f7eedd 100%);padding:2rem 1.6rem;display:flex;align-items:center;justify-content:center;}',
+      '.mg-page-half.right{--mg-ang:80deg;}',
+      '.mg-page-deco{position:absolute;inset:1.4rem;border:1.5px solid rgba(200,168,106,.22);border-radius:5px;pointer-events:none;}',
+      '.mg-gutter{position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);width:40px;z-index:5;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(120,90,60,.14) 38%,rgba(120,90,60,.2) 50%,rgba(120,90,60,.14) 62%,transparent);}',
+      '.mg-spread::before,.mg-spread::after{content:"";position:absolute;top:5px;bottom:5px;width:7px;background:repeating-linear-gradient(180deg,#ecdcc4,#ecdcc4 1px,#f6ead4 1px,#f6ead4 3px);z-index:4;}',
+      '.mg-spread::before{right:-6px;border-radius:0 5px 5px 0;}',
+      '.mg-spread::after{left:-6px;border-radius:5px 0 0 5px;}',
+      '.mg-story{font-family:"Frank Ruhl Libre","Assistant",serif;font-size:1.1rem;line-height:1.9;color:#3d2b2b;text-align:center;max-width:11rem;transition:opacity .5s ease,transform .5s ease;}',
+      '.mg-story.out{opacity:0;transform:translateY(6px);}',
+      '.mg-vignette{width:130px;height:160px;position:relative;}',
+      '.mg-sky{position:absolute;inset:0;border-radius:50% 50% 46% 46%/55% 55% 45% 45%;background:radial-gradient(ellipse at 50% 30%,#f6dfe3 0%,#e8c5cd 60%,#d8b0bb 100%);filter:url(#mg-wc2);}',
+      '.mg-hill{position:absolute;bottom:0;left:0;right:0;height:64px;border-radius:46% 46% 0 0/100% 100% 0 0;background:radial-gradient(ellipse at 40% 0%,#cfe0c9,#a9c6a2);filter:url(#mg-wc2);}',
+      '.mg-sun{position:absolute;top:22px;left:50%;transform:translateX(-50%);width:38px;height:38px;border-radius:50%;background:radial-gradient(circle at 50% 45%,#fff4d6,#f3d79a 70%,#e9c178);box-shadow:0 0 18px rgba(243,215,154,.7);}',
+      '.mg-bird{position:absolute;width:12px;height:6px;border:2px solid #9a7d6a;border-color:#9a7d6a transparent transparent transparent;border-radius:50%;}',
+      '.mg-bird.b1{top:40px;left:26px;}',
+      '.mg-bird.b2{top:50px;left:80px;transform:scale(.8);}',
+      '.mg-turn{position:absolute;top:0;bottom:0;width:50%;background:linear-gradient(100deg,#f7eedd,#fbf4e9);opacity:0;z-index:6;backface-visibility:hidden;}',
+      '.mg-turn.next{left:0;transform-origin:right center;box-shadow:6px 0 14px rgba(120,90,60,.16);border-radius:2px 5px 5px 2px;}',
+      '.mg-turn.next.flip{animation:mgFlipNext .9s ease both;}',
+      '@keyframes mgFlipNext{0%{opacity:1;transform:rotateY(0deg)}100%{opacity:1;transform:rotateY(160deg)}}',
+      '.mg-reading-progress{font-size:0.72rem;color:var(--muted);}'
+    ].join('');
+    document.head.appendChild(s);
+  }
+  if (!document.getElementById('mg-wc2-filter')) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.id = 'mg-wc2-filter';
+    svg.setAttribute('width', '0');
+    svg.setAttribute('height', '0');
+    svg.style.cssText = 'position:absolute;overflow:hidden;';
+    svg.innerHTML = '<filter id="mg-wc2"><feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="2" seed="11" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G"/></filter>';
+    document.body.insertBefore(svg, document.body.firstChild);
+  }
+
   host.innerHTML = `
-    <div style="font-size:0.85rem;color:var(--charcoal);font-weight:700;">📖</div>
-    <div class="book" style="
-      position:relative; width:220px; height:104px;
-      background: linear-gradient(180deg, #fdf6e3 0%, #f3e7c4 100%);
-      border:2px solid var(--sand-dark);
-      border-radius: 8px;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
-      overflow:hidden;
-    ">
-      <!-- central crease — the only static decoration -->
-      <div style="position:absolute; top:0; bottom:0; left:50%;
-                  width:1px; background:rgba(0,0,0,0.12);"></div>
-      <!-- The text element fades between pages; the book itself never moves. -->
-      <div class="book-page" style="
-        position:absolute; inset:0;
-        display:flex; align-items:center; justify-content:center;
-        padding: 0.6rem 1rem;
-        font-size: 0.98rem;
-        font-style: italic;
-        color: var(--charcoal);
-        text-align:center;
-        direction:rtl;
-        line-height: 1.6;
-        opacity: 1;
-        transition: opacity 0.4s ease;
-      ">${pages[0]}</div>
+    <div class="mg-book">
+      <div class="mg-cover"></div>
+      <div class="mg-spread">
+        <div class="mg-page-half right">
+          <div class="mg-page-deco"></div>
+          <p class="mg-story" id="mg-story">${pages[0]}</p>
+        </div>
+        <div class="mg-page-half left">
+          <div class="mg-page-deco"></div>
+          <div class="mg-vignette">
+            <div class="mg-sky"></div>
+            <div class="mg-sun"></div>
+            <div class="mg-bird b1"></div>
+            <div class="mg-bird b2"></div>
+            <div class="mg-hill"></div>
+          </div>
+        </div>
+      </div>
+      <div class="mg-gutter"></div>
+      <div class="mg-turn next" id="mg-turn"></div>
     </div>
-    <div class="reading-progress" style="font-size:0.72rem;color:var(--muted);">
-      עמוד 1 מתוך 3
-    </div>
+    <div class="mg-reading-progress" id="mg-reading-progress">עמוד 1 מתוך 3</div>
   `;
 
-  const pageEl     = host.querySelector(".book-page");
-  const progressEl = host.querySelector(".reading-progress");
+  const pageEl     = host.querySelector("#mg-story");
+  const progressEl = host.querySelector("#mg-reading-progress");
+  const turnEl     = host.querySelector("#mg-turn");
   let idx = 0;
   let turnTimer = null;
 
   function crossfadeTo(next) {
-    pageEl.style.opacity = "0";
+    turnEl.classList.remove('flip');
+    void turnEl.offsetWidth;
+    turnEl.classList.add('flip');
+    pageEl.classList.add('out');
     setTimeout(() => {
       if (gameState.activeMinigame !== "reading") return;
       pageEl.textContent     = pages[next];
       progressEl.textContent = `עמוד ${next + 1} מתוך 3`;
-      pageEl.style.opacity   = "1";
-    }, 400);
+      pageEl.classList.remove('out');
+    }, 450);
+    setTimeout(() => { turnEl.classList.remove('flip'); }, 900);
   }
 
   function tick() {
