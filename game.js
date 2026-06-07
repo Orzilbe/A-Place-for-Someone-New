@@ -653,10 +653,10 @@ function checkAllSecured() {
 }
 
 // ── סימון פריט כמובטח ───────────────────────────────────────────────────────
-function secureItem(item, cost, fromRonitL = false) {
+function secureItem(item, cost, fromRonitL = false, forceNew = false) {
   item.isSecured = true;
   SoundManager.itemSecured();
-  item._worn = (cost < item.costNew && cost > 0);
+  item._worn = forceNew ? false : (cost < item.costNew && cost > 0);
   if (fromRonitL) item._fromRonitL = true;
   if (!gameState.superstition) {
     item.inHouse = true;
@@ -710,7 +710,7 @@ function showItemMenu(item) {
           return;
         }
         narrate(`הזמנת <em>${item.name}</em> ${item.gender === "f" ? "חדשה לגמרי. יקרה." : "חדש לגמרי. טרי. יקר."} שווה את זה.`);
-        secureItem(item, buyPrice);
+        secureItem(item, buyPrice, false, hasCoupon);
         setTimeout(showMainItemList, 1200);
       }
     },
@@ -1293,7 +1293,7 @@ function openPhoneCall() {
     phoneContent.insertAdjacentHTML("beforeend", `
       <div class="wa-bubble incoming" style="margin-top:8px;">אגב — מצאתי קופון אונליין ל${topItem.name}. שלחתי לך, אמור לחסוך לך כמה שקלים 🎟️</div>
     `);
-    showToast(`🎟️ קופון התקבל! ${topItem.name} במחיר מיוחד.`);
+    setTimeout(() => showToast(`🎟️ קופון התקבל! ${topItem.name} במחיר מיוחד.`), 2000);
   }
 
   phoneOverlay.classList.remove("hidden");
