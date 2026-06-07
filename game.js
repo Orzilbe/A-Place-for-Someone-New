@@ -1285,13 +1285,21 @@ function openPhoneCall() {
   const unsecuredItems = gameState.items.filter(i => !i.isSecured);
   if (unsecuredItems.length > 0 && !gameState.couponUsed) {
     const topItem = unsecuredItems.reduce((a, b) => a.costNew > b.costNew ? a : b);
-    gameState.couponUsed     = true;
-    gameState.couponItem     = topItem.id;
-    gameState.couponDiscount = Math.round(topItem.costNew * 0.80);
+    const discountedPrice = Math.round(topItem.costNew * 0.80);
     phoneContent.insertAdjacentHTML("beforeend", `
-      <div class="wa-bubble incoming" style="margin-top:8px;">אגב — מצאתי קופון אונליין ל${topItem.name}. שלחתי לך, אמור לחסוך לך כמה שקלים 🎟️</div>
+      <div class="wa-bubble incoming" style="margin-top:8px;">אגב — מצאתי קופון אונליין ל${topItem.name}. שלחתי לנו, אמור לחסוך לנו כמה שקלים 🎟️</div>
+      <div id="claim-coupon-btn" style="text-align:center;margin:10px 8px;">
+        <button style="background:#8aab84;color:#fff;border:none;border-radius:20px;padding:10px 18px;font-size:0.9rem;cursor:pointer;direction:rtl;">🎟️ קבלי את הקופון — ${discountedPrice.toLocaleString()} ₪ במקום ${topItem.costNew.toLocaleString()} ₪</button>
+      </div>
     `);
-    setTimeout(() => showToast(`🎟️ קופון התקבל! ${topItem.name} במחיר מיוחד.`), 2000);
+    document.getElementById("claim-coupon-btn").querySelector("button").addEventListener("click", () => {
+      gameState.couponUsed     = true;
+      gameState.couponItem     = topItem.id;
+      gameState.couponDiscount = discountedPrice;
+      const btn = document.getElementById("claim-coupon-btn");
+      if (btn) btn.remove();
+      showToast("🎟️ קופון נוסף לרשימה!");
+    });
   }
 
   phoneOverlay.classList.remove("hidden");
@@ -1892,18 +1900,7 @@ function openContactChat(contactId) {
       noa:   "היי... סורי שאני כותבת, סתם רציתי לדעת איך את 😅",
       dana:  "HEYYYY 😎 אז מה קורה?! מתי כבר נצא??",
     };
-    let greeting = greetings[contactId];
-    if (contactId === "oriel" && !gameState.couponUsed) {
-      const unsecuredItems = gameState.items.filter(i => !i.isSecured);
-      if (unsecuredItems.length > 0) {
-        const topItem = unsecuredItems.reduce((a, b) => a.costNew > b.costNew ? a : b);
-        gameState.couponUsed     = true;
-        gameState.couponItem     = topItem.id;
-        gameState.couponDiscount = Math.round(topItem.costNew * 0.80);
-        greeting = `היי מאמי 💙 חשבתי עלייך כל היום. מצאתי קופון אונליין ל${topItem.name} — שלחתי לך 🎟️ אמור לחסוך לך כמה שקלים.`;
-        setTimeout(() => showToast(`🎟️ קופון התקבל! ${topItem.name} במחיר מיוחד.`), 2000);
-      }
-    }
+    const greeting = greetings[contactId];
     if (greeting) {
       addChatBubble(name, greeting, "ronit");
       history.push({ role: "model", text: greeting });
@@ -1916,6 +1913,28 @@ function openContactChat(contactId) {
         msg.role === "user" ? "player" : "ronit"
       );
     });
+  }
+
+  if (contactId === "oriel" && !gameState.couponUsed) {
+    const unsecuredItems = gameState.items.filter(i => !i.isSecured);
+    if (unsecuredItems.length > 0) {
+      const topItem = unsecuredItems.reduce((a, b) => a.costNew > b.costNew ? a : b);
+      const discountedPrice = Math.round(topItem.costNew * 0.80);
+      phoneContent.insertAdjacentHTML("beforeend", `
+        <div class="wa-bubble incoming" style="margin-top:8px;">אגב — מצאתי קופון אונליין ל${topItem.name}. שלחתי לנו, אמור לחסוך לנו כמה שקלים 🎟️</div>
+        <div id="claim-coupon-btn" style="text-align:center;margin:10px 8px;">
+          <button style="background:#8aab84;color:#fff;border:none;border-radius:20px;padding:10px 18px;font-size:0.9rem;cursor:pointer;direction:rtl;">🎟️ קבלי את הקופון — ${discountedPrice.toLocaleString()} ₪ במקום ${topItem.costNew.toLocaleString()} ₪</button>
+        </div>
+      `);
+      document.getElementById("claim-coupon-btn").querySelector("button").addEventListener("click", () => {
+        gameState.couponUsed     = true;
+        gameState.couponItem     = topItem.id;
+        gameState.couponDiscount = discountedPrice;
+        const btn = document.getElementById("claim-coupon-btn");
+        if (btn) btn.remove();
+        showToast("🎟️ קופון נוסף לרשימה!");
+      });
+    }
   }
 
   async function sendMessage() {
