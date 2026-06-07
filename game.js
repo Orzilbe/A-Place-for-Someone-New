@@ -1081,14 +1081,12 @@ function beginAct1() {
     narrate(`פתחת את רשימת הקניות. חמישה פריטים. הציוד יחכה בחוץ עד הלידה - אבל עדיין צריך לשלם על הדברים מראש.`);
     setTimeout(() => {
       showMainItemList();
-      scheduleHusbandCall();
       scheduleMotherSupportCall();
     }, 1000);
   } else {
     narrate(`פתחת את רשימת הקניות. חמישה פריטים. את יכולה לעשות את זה.`);
     setTimeout(() => {
       showMainItemList();
-      scheduleHusbandCall();
     }, 1000);
   }
 }
@@ -1903,7 +1901,7 @@ function openContactChat(contactId) {
         gameState.couponItem     = topItem.id;
         gameState.couponDiscount = Math.round(topItem.costNew * 0.80);
         greeting = `היי מאמי 💙 חשבתי עלייך כל היום. מצאתי קופון אונליין ל${topItem.name} — שלחתי לך 🎟️ אמור לחסוך לך כמה שקלים.`;
-        showToast(`🎟️ קופון התקבל! ${topItem.name} במחיר מיוחד.`);
+        setTimeout(() => showToast(`🎟️ קופון התקבל! ${topItem.name} במחיר מיוחד.`), 2000);
       }
     }
     if (greeting) {
