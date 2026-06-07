@@ -1891,7 +1891,18 @@ function openContactChat(contactId) {
       noa:   "היי... סורי שאני כותבת, סתם רציתי לדעת איך את 😅",
       dana:  "HEYYYY 😎 אז מה קורה?! מתי כבר נצא??",
     };
-    const greeting = greetings[contactId];
+    let greeting = greetings[contactId];
+    if (contactId === "oriel" && !gameState.couponUsed) {
+      const unsecuredItems = gameState.items.filter(i => !i.isSecured);
+      if (unsecuredItems.length > 0) {
+        const topItem = unsecuredItems.reduce((a, b) => a.costNew > b.costNew ? a : b);
+        gameState.couponUsed     = true;
+        gameState.couponItem     = topItem.id;
+        gameState.couponDiscount = Math.round(topItem.costNew * 0.80);
+        greeting = `היי מאמי 💙 חשבתי עלייך כל היום. מצאתי קופון אונליין ל${topItem.name} — שלחתי לך 🎟️ אמור לחסוך לך כמה שקלים.`;
+        showToast(`🎟️ קופון התקבל! ${topItem.name} במחיר מיוחד.`);
+      }
+    }
     if (greeting) {
       addChatBubble(name, greeting, "ronit");
       history.push({ role: "model", text: greeting });
