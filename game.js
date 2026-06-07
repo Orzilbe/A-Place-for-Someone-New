@@ -1265,13 +1265,16 @@ function openPhoneCall() {
   phoneContent.classList.remove("hidden");
   phoneInputArea.classList.add("hidden");
 
+  const DORITOS_LINE = "\"מאמי, רק דבר אחד אני מבקש — דוריטוס חמוץ חריף. זה הכל. תשמרי לי. 🧡\"";
   const lines = [
     "\"מאמי, מה שלומך? הכל בסדר?\"",
     "\"כמה שהייתי רוצה לחזור הביתה להיות איתך ולעזור בהכנות.\"",
     "\"החברים כאן שולחים דרישת שלום. כולנו חושבים עלייך.\"",
-    "\"אחזור הביתה בקרוב. יכולה לדאוג שיהיה דוריטוס חמוץ חריף?\""
+    "\"אחזור הביתה בקרוב. יכולה לדאוג שיהיה דוריטוס חמוץ חריף?\"",
+    DORITOS_LINE,
   ];
   const line = lines[Math.floor(Math.random() * lines.length)];
+  if (line === DORITOS_LINE) showToast("😂 הוא רציני לגמרי.");
 
   phoneAppName.textContent = "📞 אוריאל";
   $("phone-status-bar").classList.add("call-mode");
