@@ -52,6 +52,9 @@ const gameState = {
   minigameCleanup:   null,   // () => void — מנקה DOM/טיימרים כשהתינוקת בוכה
   readingMode:       false,  // משאיר את stealthMouseHandler בעדינות יתרה
   endingTriggered:   false,  // true ברגע שהיום נגמר — חוסם השכמות/הרדמות נוספות
+  couponUsed:        false,
+  couponItem:        null,
+  couponDiscount:    null,
 };
 
 // ── טיימר שינה — מחזה ב׳ ───────────────────────────────────────────────
@@ -690,19 +693,24 @@ function showItemMenu(item) {
     return;
   }
 
+  const hasCoupon = gameState.couponItem === item.id;
+  const buyPrice  = hasCoupon ? gameState.couponDiscount : item.costNew;
+
   const choices = [
     {
-      label: `קנייה חדשה — ${item.costNew.toLocaleString()} ₪${gameState.budget < item.costNew ? " (אין תקציב)" : ""}`,
+      label: hasCoupon
+        ? `קנייה חדשה — 🎟️ ${gameState.couponDiscount.toLocaleString()} ₪ (במקום ${item.costNew.toLocaleString()})${gameState.budget < gameState.couponDiscount ? " (אין תקציב)" : ""}`
+        : `קנייה חדשה — ${item.costNew.toLocaleString()} ₪${gameState.budget < item.costNew ? " (אין תקציב)" : ""}`,
       action: () => {
-        if (gameState.budget < item.costNew) return;
-        if (gameState.budget < 300 && item.costNew > 400) {
+        if (gameState.budget < buyPrice) return;
+        if (gameState.budget < 300 && buyPrice > 400) {
           drainSanity(3);
           showToast("זה מחוץ להישג יד עכשיו. −3 שפיות 💸");
           narrate(`<strong>${item.emoji} ${item.name}</strong><br><em>עמדת מול המחיר ולא יכולת. אולי יד שנייה? אולי הקבוצה?</em>`);
           return;
         }
         narrate(`הזמנת <em>${item.name}</em> ${item.gender === "f" ? "חדשה לגמרי. יקרה." : "חדש לגמרי. טרי. יקר."} שווה את זה.`);
-        secureItem(item, item.costNew);
+        secureItem(item, buyPrice);
         setTimeout(showMainItemList, 1200);
       }
     },
@@ -1272,6 +1280,19 @@ function openPhoneCall() {
     <div class="wa-bubble incoming" style="font-style:italic;margin-top:auto;">${line}</div>
     <div class="wa-bubble incoming" style="font-size:0.78rem;color:#888;">הקו רועש, ואז שקט.</div>
   `;
+
+  const unsecuredItems = gameState.items.filter(i => !i.isSecured);
+  if (unsecuredItems.length > 0 && !gameState.couponUsed) {
+    const topItem = unsecuredItems.reduce((a, b) => a.costNew > b.costNew ? a : b);
+    gameState.couponUsed     = true;
+    gameState.couponItem     = topItem.id;
+    gameState.couponDiscount = Math.round(topItem.costNew * 0.80);
+    phoneContent.insertAdjacentHTML("beforeend", `
+      <div class="wa-bubble incoming" style="margin-top:8px;">אגב — מצאתי קופון אונליין ל${topItem.name}. שלחתי לך, אמור לחסוך לך כמה שקלים 🎟️</div>
+    `);
+    showToast(`🎟️ קופון התקבל! ${topItem.name} במחיר מיוחד.`);
+  }
+
   phoneOverlay.classList.remove("hidden");
 
   phoneCloseBtn.onclick = () => {
