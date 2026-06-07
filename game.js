@@ -1905,36 +1905,57 @@ function openContactChat(contactId) {
       addChatBubble(name, greeting, "ronit");
       history.push({ role: "model", text: greeting });
     }
+
+    if (contactId === "oriel" && !gameState.couponUsed) {
+      const unsecuredItems = gameState.items.filter(i => !i.isSecured);
+      if (unsecuredItems.length > 0) {
+        const topItem         = unsecuredItems.reduce((a, b) => a.costNew > b.costNew ? a : b);
+        const discountedPrice = Math.round(topItem.costNew * 0.80);
+        const couponText      = `אגב — מצאתי קופון אונליין ל${topItem.name}. שלחתי לנו, אמור לחסוך לנו כמה שקלים 🎟️`;
+        phoneContent.insertAdjacentHTML("beforeend", `
+          <div class="wa-bubble incoming" style="margin-top:8px;">${couponText}</div>
+          <div id="claim-coupon-btn" style="text-align:center;margin:10px 8px;">
+            <button style="background:#8aab84;color:#fff;border:none;border-radius:20px;padding:10px 18px;font-size:0.9rem;cursor:pointer;direction:rtl;">🎟️ קבלי את הקופון — ${discountedPrice.toLocaleString()} ₪ במקום ${topItem.costNew.toLocaleString()} ₪</button>
+          </div>
+        `);
+        history.push({ role: "model", text: couponText, coupon: true, itemId: topItem.id, discount: discountedPrice, originalPrice: topItem.costNew });
+        document.getElementById("claim-coupon-btn").querySelector("button").addEventListener("click", () => {
+          gameState.couponUsed     = true;
+          gameState.couponItem     = topItem.id;
+          gameState.couponDiscount = discountedPrice;
+          const btn = document.getElementById("claim-coupon-btn");
+          if (btn) btn.remove();
+          showToast("🎟️ קופון נוסף לרשימה!");
+        });
+      }
+    }
   } else {
     history.forEach(msg => {
-      addChatBubble(
-        msg.role === "user" ? "את" : name,
-        msg.text,
-        msg.role === "user" ? "player" : "ronit"
-      );
+      if (msg.coupon) {
+        addChatBubble(name, msg.text, "ronit");
+        if (!gameState.couponUsed) {
+          phoneContent.insertAdjacentHTML("beforeend", `
+            <div id="claim-coupon-btn" style="text-align:center;margin:10px 8px;">
+              <button style="background:#8aab84;color:#fff;border:none;border-radius:20px;padding:10px 18px;font-size:0.9rem;cursor:pointer;direction:rtl;">🎟️ קבלי את הקופון — ${msg.discount.toLocaleString()} ₪ במקום ${msg.originalPrice.toLocaleString()} ₪</button>
+            </div>
+          `);
+          document.getElementById("claim-coupon-btn").querySelector("button").addEventListener("click", () => {
+            gameState.couponUsed     = true;
+            gameState.couponItem     = msg.itemId;
+            gameState.couponDiscount = msg.discount;
+            const btn = document.getElementById("claim-coupon-btn");
+            if (btn) btn.remove();
+            showToast("🎟️ קופון נוסף לרשימה!");
+          });
+        }
+      } else {
+        addChatBubble(
+          msg.role === "user" ? "את" : name,
+          msg.text,
+          msg.role === "user" ? "player" : "ronit"
+        );
+      }
     });
-  }
-
-  if (contactId === "oriel" && !gameState.couponUsed) {
-    const unsecuredItems = gameState.items.filter(i => !i.isSecured);
-    if (unsecuredItems.length > 0) {
-      const topItem = unsecuredItems.reduce((a, b) => a.costNew > b.costNew ? a : b);
-      const discountedPrice = Math.round(topItem.costNew * 0.80);
-      phoneContent.insertAdjacentHTML("beforeend", `
-        <div class="wa-bubble incoming" style="margin-top:8px;">אגב, מצאתי קופון אונליין ל${topItem.name}. שלחתי לך, אמור לחסוך לנו כמה שקלים 🎟️</div>
-        <div id="claim-coupon-btn" style="text-align:center;margin:10px 8px;">
-          <button style="background:#8aab84;color:#fff;border:none;border-radius:20px;padding:10px 18px;font-size:0.9rem;cursor:pointer;direction:rtl;">🎟️ קבלי את הקופון — ${discountedPrice.toLocaleString()} ₪ במקום ${topItem.costNew.toLocaleString()} ₪</button>
-        </div>
-      `);
-      document.getElementById("claim-coupon-btn").querySelector("button").addEventListener("click", () => {
-        gameState.couponUsed     = true;
-        gameState.couponItem     = topItem.id;
-        gameState.couponDiscount = discountedPrice;
-        const btn = document.getElementById("claim-coupon-btn");
-        if (btn) btn.remove();
-        showToast("🎟️ קופון נוסף לרשימה!");
-      });
-    }
   }
 
   async function sendMessage() {
