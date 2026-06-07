@@ -83,6 +83,8 @@ function runMinigameCleanup() {
   gameState.minigameCleanup = null;
   gameState.activeMinigame  = null;
   gameState.readingMode     = false;
+  document.getElementById("dialogue-area")?.classList.remove("has-minigame");
+  document.getElementById("room-view")?.classList.remove("has-minigame");
 }
 
 // ── מנהל שמע — Web Audio API ────────────────────────────────────────────────
@@ -2382,6 +2384,8 @@ function _minigameHost(name) {
   runMinigameCleanup();
   gameState.activeMinigame = name;
   choiceButtons.innerHTML = "";
+  document.getElementById("dialogue-area")?.classList.add("has-minigame");
+  document.getElementById("room-view")?.classList.add("has-minigame");
   const host = document.createElement("div");
   host.className = "minigame";
   host.style.cssText = `

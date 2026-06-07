@@ -353,6 +353,7 @@ body {
 #dialogue-area {
   flex: 0 0 30vh;
   min-height: 240px;
+  transition: flex-basis 0.25s ease;
   display: flex;
   flex-direction: column;
   justify-content: space-between;   /* narration top, buttons bottom */
@@ -361,6 +362,12 @@ body {
   padding: 1.3rem 1.6rem 1.1rem;
   gap: 1rem;
   direction: rtl;
+}
+
+/* Expand dialogue area when a mini-game is active (desktop).
+   #room-view is flex:1 so it automatically surrenders the space. */
+#dialogue-area.has-minigame {
+  flex: 0 0 clamp(440px, 62vh, 560px);
 }
 
 #narration-box {
@@ -980,6 +987,13 @@ body {
   #room-view {
     flex: 0 0 42vh;
     max-height: 42vh;
+    transition: flex-basis 0.25s ease, max-height 0.25s ease;
+  }
+
+  /* Shrink room during mini-games so dialogue (flex:1) gets the freed space */
+  #room-view.has-minigame {
+    flex: 0 0 26vh;
+    max-height: 26vh;
   }
 
   /* Dialogue takes remaining space above bottom bar */
