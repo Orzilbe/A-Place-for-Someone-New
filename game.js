@@ -1287,7 +1287,7 @@ function openPhoneCall() {
     const topItem = unsecuredItems.reduce((a, b) => a.costNew > b.costNew ? a : b);
     const discountedPrice = Math.round(topItem.costNew * 0.80);
     phoneContent.insertAdjacentHTML("beforeend", `
-      <div class="wa-bubble incoming" style="margin-top:8px;">אגב — מצאתי קופון אונליין ל${topItem.name}. שלחתי לנו, אמור לחסוך לנו כמה שקלים 🎟️</div>
+      <div class="wa-bubble incoming" style="margin-top:8px;">אגב, מצאתי קופון אונליין ל${topItem.name}. שלחתי לך, אמור לחסוך לנו כמה שקלים 🎟️</div>
       <div id="claim-coupon-btn" style="text-align:center;margin:10px 8px;">
         <button style="background:#8aab84;color:#fff;border:none;border-radius:20px;padding:10px 18px;font-size:0.9rem;cursor:pointer;direction:rtl;">🎟️ קבלי את הקופון — ${discountedPrice.toLocaleString()} ₪ במקום ${topItem.costNew.toLocaleString()} ₪</button>
       </div>
@@ -1921,7 +1921,7 @@ function openContactChat(contactId) {
       const topItem = unsecuredItems.reduce((a, b) => a.costNew > b.costNew ? a : b);
       const discountedPrice = Math.round(topItem.costNew * 0.80);
       phoneContent.insertAdjacentHTML("beforeend", `
-        <div class="wa-bubble incoming" style="margin-top:8px;">אגב — מצאתי קופון אונליין ל${topItem.name}. שלחתי לנו, אמור לחסוך לנו כמה שקלים 🎟️</div>
+        <div class="wa-bubble incoming" style="margin-top:8px;">אגב, מצאתי קופון אונליין ל${topItem.name}. שלחתי לך, אמור לחסוך לנו כמה שקלים 🎟️</div>
         <div id="claim-coupon-btn" style="text-align:center;margin:10px 8px;">
           <button style="background:#8aab84;color:#fff;border:none;border-radius:20px;padding:10px 18px;font-size:0.9rem;cursor:pointer;direction:rtl;">🎟️ קבלי את הקופון — ${discountedPrice.toLocaleString()} ₪ במקום ${topItem.costNew.toLocaleString()} ₪</button>
         </div>
