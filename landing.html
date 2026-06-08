@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>מקום למישהי חדשה — משחק נרטיבי</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Variables ───────────────────────────────────────────── */
+    :root {
+      --cream:      #fdf6f0;
+      --cream-mid:  #f5e8dc;
+      --rose:       #e8b4b8;
+      --rose-dark:  #c98a8e;
+      --rose-deep:  #a06670;
+      --sage:       #c4d4c0;
+      --sage-dark:  #8aab84;
+      --charcoal:   #3d2b2b;
+      --charcoal-2: #2a1e1e;
+      --muted:      #8a7070;
+      --white:      #ffffff;
+    }
+
+    /* ── Reset ───────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Assistant', 'Segoe UI', Arial, sans-serif;
+      background: var(--cream);
+      color: var(--charcoal);
+      overflow-x: hidden;
+      direction: rtl;
+    }
+
+    /* ── Reveal animation ────────────────────────────────────── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.22s; }
+    .reveal-delay-3 { transition-delay: 0.34s; }
+
+    /* ══════════════════════════════════════════════════════════
+       HERO
+    ══════════════════════════════════════════════════════════ */
+    #hero {
+      position: relative;
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 3rem 1.5rem 5rem;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse at 20% 15%, #f8e8e4 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 80%, #dce8d8 0%, transparent 50%),
+        radial-gradient(ellipse at 60% 10%, #f5ddd4 0%, transparent 45%),
+        linear-gradient(165deg, #fdf6f0 0%, #f7e8e0 45%, #eee0d8 100%);
+    }
+
+    /* Floating blobs */
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(48px);
+      opacity: 0.45;
+      pointer-events: none;
+      animation: drift 9s ease-in-out infinite;
+    }
+    .blob-1 {
+      width: 340px; height: 340px;
+      background: var(--rose);
+      top: -80px; left: -100px;
+      animation-delay: 0s;
+    }
+    .blob-2 {
+      width: 280px; height: 280px;
+      background: var(--sage);
+      bottom: 40px; right: -80px;
+      animation-delay: -3.5s;
+    }
+    .blob-3 {
+      width: 200px; height: 200px;
+      background: #f0d8cc;
+      top: 40%; left: 55%;
+      animation-delay: -6s;
+    }
+
+    @keyframes drift {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33%       { transform: translate(18px, -22px) scale(1.04); }
+      66%       { transform: translate(-14px, 14px) scale(0.97); }
+    }
+
+    /* Baby room illustration */
+    .hero-illustration {
+      width: min(260px, 62vw);
+      height: min(260px, 62vw);
+      margin-bottom: 2.5rem;
+      position: relative;
+      animation: gentle-pulse 4s ease-in-out infinite;
+    }
+    @keyframes gentle-pulse {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50%       { transform: translateY(-8px) scale(1.015); }
+    }
+
+    .room-svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 12px 28px rgba(120, 80, 60, 0.15));
+    }
+
+    /* Hero text */
+    .hero-eyebrow {
+      font-size: clamp(0.78rem, 2.2vw, 0.92rem);
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      color: var(--rose-dark);
+      text-transform: uppercase;
+      margin-bottom: 0.8rem;
+      opacity: 0.85;
+    }
+
+    .hero-title {
+      font-size: clamp(2.4rem, 8vw, 5rem);
+      font-weight: 800;
+      color: var(--charcoal);
+      line-height: 1.15;
+      margin-bottom: 0.6rem;
+      letter-spacing: -0.01em;
+    }
+
+    .hero-subtitle {
+      font-size: clamp(1rem, 3vw, 1.35rem);
+      font-weight: 600;
+      color: var(--sage-dark);
+      margin-bottom: 1.4rem;
+      letter-spacing: 0.02em;
+    }
+
+    .hero-tagline {
+      font-size: clamp(0.95rem, 2.5vw, 1.15rem);
+      font-weight: 400;
+      color: var(--muted);
+      max-width: 520px;
+      line-height: 1.75;
+      margin-bottom: 2.8rem;
+    }
+
+    /* CTA button */
+    .btn-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.95rem 2.4rem;
+      font-family: inherit;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--white);
+      background: linear-gradient(135deg, var(--rose-dark) 0%, var(--rose-deep) 100%);
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      text-decoration: none;
+      box-shadow: 0 6px 24px rgba(169, 100, 110, 0.38), 0 2px 6px rgba(0,0,0,0.1);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-cta::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+      border-radius: inherit;
+      pointer-events: none;
+    }
+    .btn-cta:hover {
+      transform: translateY(-3px) scale(1.03);
+      box-shadow: 0 10px 32px rgba(169, 100, 110, 0.48), 0 4px 10px rgba(0,0,0,0.12);
+    }
+    .btn-cta:active {
+      transform: translateY(-1px) scale(1.01);
+    }
+
+    .btn-cta-ghost {
+      background: transparent;
+      color: var(--rose-dark);
+      border: 2px solid var(--rose);
+      box-shadow: none;
+    }
+    .btn-cta-ghost:hover {
+      background: var(--rose);
+      color: var(--charcoal);
+      box-shadow: 0 6px 20px rgba(232, 180, 184, 0.4);
+    }
+
+    /* Scroll hint */
+    .scroll-hint {
+      position: absolute;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35rem;
+      color: var(--muted);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      opacity: 0.6;
+      animation: bob 2.2s ease-in-out infinite;
+    }
+    @keyframes bob {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50%       { transform: translateX(-50%) translateY(6px); }
+    }
+    .scroll-arrow {
+      width: 18px; height: 18px;
+      border-right: 2px solid var(--muted);
+      border-bottom: 2px solid var(--muted);
+      transform: rotate(45deg);
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       SECTION BASE
+    ══════════════════════════════════════════════════════════ */
+    section {
+      padding: clamp(4rem, 8vw, 7rem) clamp(1.2rem, 6vw, 3rem);
+    }
+
+    .section-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--sage-dark);
+      margin-bottom: 0.7rem;
+    }
+
+    .section-title {
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      font-weight: 800;
+      color: var(--charcoal);
+      line-height: 1.2;
+      margin-bottom: 1rem;
+    }
+
+    .section-subtitle {
+      font-size: clamp(0.95rem, 2.5vw, 1.1rem);
+      color: var(--muted);
+      line-height: 1.75;
+      max-width: 560px;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: clamp(2.5rem, 5vw, 4rem);
+    }
+    .section-header .section-subtitle {
+      margin: 0 auto;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       ABOUT — Three act cards
+    ══════════════════════════════════════════════════════════ */
+    #about {
+      background: var(--white);
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.4rem;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    @media (min-width: 640px) {
+      .cards-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.8rem;
+      }
+    }
+
+    .act-card {
+      background: var(--cream);
+      border-radius: 20px;
+      padding: 2rem 1.6rem 1.8rem;
+      border: 1.5px solid rgba(232, 180, 184, 0.25);
+      box-shadow: 0 4px 18px rgba(120, 80, 60, 0.07);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .act-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+      border-radius: 20px 20px 0 0;
+    }
+    .act-card:nth-child(1)::before { background: linear-gradient(90deg, var(--rose), var(--rose-dark)); }
+    .act-card:nth-child(2)::before { background: linear-gradient(90deg, var(--sage), var(--sage-dark)); }
+    .act-card:nth-child(3)::before { background: linear-gradient(90deg, #e8d4a0, #c8a86a); }
+
+    .act-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 32px rgba(120, 80, 60, 0.13);
+    }
+
+    .act-icon {
+      font-size: 2.4rem;
+      margin-bottom: 1rem;
+      display: block;
+      line-height: 1;
+    }
+
+    .act-number {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--rose-dark);
+      margin-bottom: 0.4rem;
+      opacity: 0.75;
+    }
+
+    .act-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--charcoal);
+      margin-bottom: 0.7rem;
+    }
+
+    .act-desc {
+      font-size: 0.92rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       FEATURES
+    ══════════════════════════════════════════════════════════ */
+    #features {
+      background: linear-gradient(160deg, var(--cream) 0%, #f0e8e4 100%);
+    }
+
+    .features-wrap {
+      max-width: 700px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .feature-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 1.2rem;
+      background: rgba(255,255,255,0.7);
+      border-radius: 16px;
+      padding: 1.2rem 1.5rem;
+      border: 1.5px solid rgba(255,255,255,0.9);
+      box-shadow: 0 2px 12px rgba(120,80,60,0.06);
+      backdrop-filter: blur(4px);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .feature-row:hover {
+      transform: translateX(-4px);
+      box-shadow: 0 6px 20px rgba(120,80,60,0.11);
+    }
+
+    .feature-icon {
+      font-size: 1.8rem;
+      flex-shrink: 0;
+      line-height: 1;
+      margin-top: 0.1rem;
+    }
+
+    .feature-text strong {
+      display: block;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--charcoal);
+      margin-bottom: 0.2rem;
+    }
+    .feature-text span {
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       QUOTE BREAK
+    ══════════════════════════════════════════════════════════ */
+    #quote {
+      background: var(--white);
+      padding: clamp(3rem, 6vw, 5rem) clamp(1.2rem, 6vw, 3rem);
+    }
+
+    .quote-block {
+      max-width: 680px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .quote-mark {
+      font-size: 5rem;
+      line-height: 0.6;
+      color: var(--rose);
+      font-family: Georgia, serif;
+      display: block;
+      margin-bottom: 1.2rem;
+      opacity: 0.6;
+    }
+
+    .quote-text {
+      font-size: clamp(1.2rem, 3.5vw, 1.6rem);
+      font-weight: 300;
+      color: var(--charcoal);
+      line-height: 1.8;
+      font-style: italic;
+      margin-bottom: 1.2rem;
+    }
+
+    .quote-attr {
+      font-size: 0.85rem;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       FINAL CTA
+    ══════════════════════════════════════════════════════════ */
+    #final-cta {
+      background:
+        radial-gradient(ellipse at 30% 50%, rgba(232,180,184,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 30%, rgba(196,212,192,0.1) 0%, transparent 55%),
+        linear-gradient(160deg, #2a1e1e 0%, #3d2b2b 50%, #2e2020 100%);
+      color: var(--cream);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #final-cta::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.018'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+
+    .cta-stars {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .star {
+      position: absolute;
+      width: 3px; height: 3px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.5);
+      animation: twinkle 3s ease-in-out infinite;
+    }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.2; transform: scale(1); }
+      50%       { opacity: 0.8; transform: scale(1.4); }
+    }
+
+    .cta-big {
+      font-size: clamp(3rem, 10vw, 6rem);
+      font-weight: 800;
+      color: var(--cream);
+      line-height: 1;
+      margin-bottom: 1rem;
+      position: relative;
+    }
+
+    .cta-sub {
+      font-size: clamp(1rem, 2.8vw, 1.3rem);
+      color: rgba(253, 246, 240, 0.65);
+      margin-bottom: 2.8rem;
+      font-weight: 400;
+      line-height: 1.7;
+      position: relative;
+    }
+
+    .btn-cta-light {
+      background: linear-gradient(135deg, var(--cream) 0%, #f0e0d4 100%);
+      color: var(--charcoal);
+      box-shadow: 0 6px 28px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .btn-cta-light:hover {
+      background: var(--white);
+      box-shadow: 0 12px 36px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       FOOTER
+    ══════════════════════════════════════════════════════════ */
+    footer {
+      background: var(--charcoal-2);
+      color: rgba(253,246,240,0.4);
+      text-align: center;
+      padding: 1.8rem 1rem;
+      font-size: 0.8rem;
+      letter-spacing: 0.04em;
+    }
+
+    footer a {
+      color: rgba(232, 180, 184, 0.6);
+      text-decoration: none;
+    }
+    footer a:hover {
+      color: var(--rose);
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       DIVIDER
+    ══════════════════════════════════════════════════════════ */
+    .section-divider {
+      width: 48px; height: 3px;
+      background: linear-gradient(90deg, var(--rose), var(--sage));
+      border-radius: 2px;
+      margin: 0.8rem auto 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════
+       HERO
+  ══════════════════════════════════════ -->
+  <section id="hero">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+
+    <!-- Baby room illustration (inline SVG for zero dependencies) -->
+    <div class="hero-illustration reveal">
+      <svg class="room-svg" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- room background -->
+        <rect width="240" height="240" rx="28" fill="#fdf0e8"/>
+        <!-- floor -->
+        <rect x="0" y="185" width="240" height="55" rx="0" fill="#f0dfd0" opacity="0.6"/>
+        <rect x="0" y="183" width="240" height="4" rx="2" fill="#e0c8b0" opacity="0.5"/>
+        <!-- window -->
+        <rect x="148" y="30" width="68" height="72" rx="8" fill="#d8ecf4" opacity="0.8"/>
+        <rect x="148" y="30" width="68" height="72" rx="8" fill="none" stroke="#c4b8a8" stroke-width="2.5"/>
+        <line x1="182" y1="30" x2="182" y2="102" stroke="#c4b8a8" stroke-width="1.5"/>
+        <line x1="148" y1="66" x2="216" y2="66" stroke="#c4b8a8" stroke-width="1.5"/>
+        <!-- soft curtain left -->
+        <path d="M148 28 Q138 55 144 102" stroke="#e8b4b8" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.7"/>
+        <!-- soft curtain right -->
+        <path d="M216 28 Q226 55 220 102" stroke="#e8b4b8" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.7"/>
+        <!-- crib -->
+        <rect x="20" y="135" width="90" height="52" rx="8" fill="#f5ede4" stroke="#d4b89a" stroke-width="2"/>
+        <rect x="20" y="135" width="90" height="14" rx="4" fill="#e8b4b8" opacity="0.5"/>
+        <!-- crib legs -->
+        <rect x="26" y="183" width="6" height="14" rx="3" fill="#d4b89a"/>
+        <rect x="98" y="183" width="6" height="14" rx="3" fill="#d4b89a"/>
+        <!-- crib slats -->
+        <line x1="38" y1="149" x2="38" y2="183" stroke="#d4b89a" stroke-width="1.5" opacity="0.7"/>
+        <line x1="52" y1="149" x2="52" y2="183" stroke="#d4b89a" stroke-width="1.5" opacity="0.7"/>
+        <line x1="66" y1="149" x2="66" y2="183" stroke="#d4b89a" stroke-width="1.5" opacity="0.7"/>
+        <line x1="80" y1="149" x2="80" y2="183" stroke="#d4b89a" stroke-width="1.5" opacity="0.7"/>
+        <line x1="94" y1="149" x2="94" y2="183" stroke="#d4b89a" stroke-width="1.5" opacity="0.7"/>
+        <!-- dresser -->
+        <rect x="128" y="128" width="94" height="57" rx="7" fill="#e8d8c4" stroke="#c4a882" stroke-width="2"/>
+        <rect x="128" y="128" width="94" height="22" rx="7" fill="#dfc8b0" opacity="0.8"/>
+        <!-- dresser handles -->
+        <circle cx="163" cy="168" r="5" fill="#c4a882"/>
+        <circle cx="195" cy="168" r="5" fill="#c4a882"/>
+        <!-- mobile above crib -->
+        <line x1="65" y1="95" x2="65" y2="132" stroke="#b8a090" stroke-width="1.5" stroke-dasharray="3 2"/>
+        <line x1="40" y1="105" x2="90" y2="105" stroke="#b8a090" stroke-width="1.5"/>
+        <!-- mobile stars -->
+        <circle cx="40" cy="112" r="5" fill="#e8b4b8" opacity="0.9"/>
+        <circle cx="55" cy="116" r="4" fill="#c4d4c0" opacity="0.9"/>
+        <circle cx="70" cy="110" r="5" fill="#f0d890" opacity="0.9"/>
+        <circle cx="85" cy="115" r="4" fill="#e8b4b8" opacity="0.8"/>
+        <!-- tiny star sparkles -->
+        <text x="160" y="48" font-size="12" fill="#f0d060" opacity="0.6">✦</text>
+        <text x="24" y="68" font-size="9" fill="#e8b4b8" opacity="0.5">✦</text>
+        <text x="200" y="120" font-size="8" fill="#c4d4c0" opacity="0.55">✦</text>
+      </svg>
+    </div>
+
+    <p class="hero-eyebrow reveal reveal-delay-1">משחק נרטיבי אינטראקטיבי</p>
+    <h1 class="hero-title reveal reveal-delay-1">מקום למישהי חדשה</h1>
+    <p class="hero-subtitle reveal reveal-delay-2">ולמישהי שכבר קיימת</p>
+    <p class="hero-tagline reveal reveal-delay-2">על אמהות, מילואים, ותינוקת שלא מגיעה עם הוראות הפעלה</p>
+
+    <a href="index.html" class="btn-cta reveal reveal-delay-3">
+      התחילי לשחק ←
+    </a>
+
+    <div class="scroll-hint" aria-hidden="true">
+      <span>גלי למטה</span>
+      <div class="scroll-arrow"></div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       ABOUT — Three act cards
+  ══════════════════════════════════════ -->
+  <section id="about">
+    <div class="section-header">
+      <p class="section-label reveal">על המשחק</p>
+      <h2 class="section-title reveal">שני מחזות. החלטות אמיתיות.</h2>
+      <div class="section-divider reveal"></div>
+      <p class="section-subtitle reveal" style="margin-top:1rem;">
+        בשבועות האחרונים לפני הלידה, ובלילה הראשון עם התינוקת — כל בחירה עולה משהו.
+      </p>
+    </div>
+
+    <div class="cards-grid">
+      <div class="act-card reveal">
+        <span class="act-icon">🏠</span>
+        <p class="act-number">מחזה א׳</p>
+        <h3 class="act-title">שבועות אחרונים</h3>
+        <p class="act-desc">קנייה, משא ומתן, ניהול תקציב — לבד. הבעל בבסיס. חמש קופסאות שצריכות להגיע.</p>
+      </div>
+
+      <div class="act-card reveal reveal-delay-1">
+        <span class="act-icon">👶</span>
+        <p class="act-number">מחזה ב׳</p>
+        <h3 class="act-title">היום הראשון</h3>
+        <p class="act-desc">התינוקת ישנה. כל רעש מעירה אותה. גרידת כביסה, שאיבת חלב, כוס קפה — בדיוק בזמן הנכון.</p>
+      </div>
+
+      <div class="act-card reveal reveal-delay-2">
+        <span class="act-icon">💙</span>
+        <p class="act-number">לאורך כל הדרך</p>
+        <h3 class="act-title">הבחירות שלך</h3>
+        <p class="act-desc">להאמין לאמא או לא? לחסוך בתקציב? כל החלטה משנה את הסיפור — ואת מד השפיות.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       FEATURES
+  ══════════════════════════════════════ -->
+  <section id="features">
+    <div class="section-header">
+      <p class="section-label reveal">איך זה עובד</p>
+      <h2 class="section-title reveal">מה מחכה לך בפנים</h2>
+      <div class="section-divider reveal"></div>
+    </div>
+
+    <div class="features-wrap">
+      <div class="feature-row reveal">
+        <span class="feature-icon">💬</span>
+        <div class="feature-text">
+          <strong>שיחות AI עם דמויות אמיתיות</strong>
+          <span>משא ומתן עם רונית על שידה — היא לא תיתן לך הנחה בקלות. ה-AI מגיב לכל מה שתכתבי.</span>
+        </div>
+      </div>
+
+      <div class="feature-row reveal reveal-delay-1">
+        <span class="feature-icon">🖱️</span>
+        <div class="feature-text">
+          <strong>מכניקת עכבר ייחודית — שמרי על שקט!</strong>
+          <span>תנועה מהירה מדי של העכבר מעירה את התינוקת. כביסה, קפה, קריאה — הכל דורש ריכוז.</span>
+        </div>
+      </div>
+
+      <div class="feature-row reveal reveal-delay-2">
+        <span class="feature-icon">💰</span>
+        <div class="feature-text">
+          <strong>ניהול תקציב אמיתי — כל שקל חשוב</strong>
+          <span>4,000 ₪ לחמישה פריטים. יד ראשונה או שנייה? להתמקח או לא? הכסף נגמר מהר.</span>
+        </div>
+      </div>
+
+      <div class="feature-row reveal">
+        <span class="feature-icon">🤍</span>
+        <div class="feature-text">
+          <strong>מד שפיות — הדרך שלך לסיום</strong>
+          <span>כל החלטה מנקזת או מחזירה שפיות. אם מגיע לאפס — המשחק מסתיים בדרך אחרת לגמרי.</span>
+        </div>
+      </div>
+
+      <div class="feature-row reveal reveal-delay-1">
+        <span class="feature-icon">🌿</span>
+        <div class="feature-text">
+          <strong>אמונות טפלות — האם תקשיבי לאמא?</strong>
+          <span>החלטה אחת בתחילת המשחק משנה את כל מחזה ב׳. הגורל נגרל בסתר — ומתגלה בזמן הנכון.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       QUOTE
+  ══════════════════════════════════════ -->
+  <section id="quote">
+    <div class="quote-block reveal">
+      <span class="quote-mark">"</span>
+      <p class="quote-text">
+        את בבית. התינוקת ישנה בכיסא הבטיחות במסדרון.<br>
+        יש לך רגע לעצמך. מה את עושה?
+      </p>
+      <p class="quote-attr">— מחזה ב׳, היום הראשון</p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       FINAL CTA
+  ══════════════════════════════════════ -->
+  <section id="final-cta">
+    <div class="cta-stars" id="cta-stars"></div>
+
+    <h2 class="cta-big reveal">מוכנה?</h2>
+    <p class="cta-sub reveal reveal-delay-1">
+      כ-20 דקות.<br>בחירות שמשנות הכל.
+    </p>
+    <a href="index.html" class="btn-cta btn-cta-light reveal reveal-delay-2">
+      התחילי עכשיו ←
+    </a>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       FOOTER
+  ══════════════════════════════════════ -->
+  <footer>
+    <p>מקום למישהי חדשה &nbsp;·&nbsp; משחק נרטיבי אינטראקטיבי &nbsp;·&nbsp; <a href="index.html">שחקי ←</a></p>
+  </footer>
+
+  <script>
+    // ── Intersection Observer — reveal on scroll ──────────────
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    // Hero elements visible immediately
+    document.querySelectorAll('#hero .reveal').forEach(el => {
+      el.classList.add('visible');
+    });
+
+    // ── Generate twinkling stars in final CTA ─────────────────
+    const starsContainer = document.getElementById('cta-stars');
+    for (let i = 0; i < 38; i++) {
+      const star = document.createElement('div');
+      star.className = 'star';
+      star.style.cssText = [
+        `left:${Math.random() * 100}%`,
+        `top:${Math.random() * 100}%`,
+        `animation-delay:${(Math.random() * 3).toFixed(2)}s`,
+        `animation-duration:${(2.5 + Math.random() * 2.5).toFixed(2)}s`,
+        `opacity:${(0.15 + Math.random() * 0.5).toFixed(2)}`,
+        `width:${Math.random() > 0.7 ? 4 : 2}px`,
+        `height:${Math.random() > 0.7 ? 4 : 2}px`,
+      ].join(';');
+      starsContainer.appendChild(star);
+    }
+  </script>
+</body>
+</html>
