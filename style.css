@@ -364,6 +364,11 @@ body {
   direction: rtl;
 }
 
+/* Pump / coffee / reading mini-games: expand dialogue on desktop so animation fits.
+   room-view has flex:1 and will shrink automatically to fill remaining space. */
+#dialogue-area.has-minigame {
+  flex: 0 0 min(480px, 58vh);
+}
 
 #narration-box {
   flex: 1 1 auto;

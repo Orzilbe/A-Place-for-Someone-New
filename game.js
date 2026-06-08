@@ -2417,20 +2417,20 @@ function startPumpMinigame(mode) {
     const s = document.createElement('style');
     s.id = 'mg-pump-style';
     s.textContent = [
-      '.mg-bottle{position:relative;width:130px;height:260px;}',
-      '.mg-teat{position:absolute;top:-2px;left:50%;transform:translateX(-50%);width:36px;height:44px;background:radial-gradient(ellipse at 42% 28%,#fbf1dd 0%,#efdcbb 62%,#e2c99e 100%);border-radius:46% 46% 40% 40%/62% 62% 38% 38%;box-shadow:inset 0 -4px 7px rgba(180,140,90,.22),inset 3px 4px 6px rgba(255,255,255,.6);z-index:4;filter:url(#mg-wc);}',
-      '.mg-teat::after{content:"";position:absolute;top:8px;left:10px;width:8px;height:18px;border-radius:50%;background:linear-gradient(160deg,rgba(255,255,255,.75),rgba(255,255,255,0));}',
-      '.mg-teat::before{content:"";position:absolute;bottom:1px;left:50%;transform:translateX(-50%);width:40px;height:8px;border-radius:50%;background:linear-gradient(180deg,#e9d4ac,#dcc193);box-shadow:inset 0 -1px 2px rgba(150,110,60,.3);}',
-      '.mg-collar{position:absolute;top:30px;left:50%;transform:translateX(-50%);width:80px;height:22px;border-radius:7px;background:linear-gradient(180deg,#f5b9bf,#e8b4b8 60%,#d99aa0);box-shadow:inset 0 -3px 4px rgba(150,90,95,.3),0 2px 4px rgba(0,0,0,.08);z-index:3;filter:url(#mg-wc);}',
-      '.mg-bottle-body{position:absolute;top:46px;left:50%;transform:translateX(-50%);width:110px;height:208px;border-radius:20px 20px 40px 40px/26px 26px 54px 54px;background:linear-gradient(105deg,rgba(255,255,255,.55),rgba(232,224,212,.4));box-shadow:inset 12px 0 20px rgba(255,255,255,.6),inset -14px 0 22px rgba(180,170,155,.35),0 12px 20px rgba(120,110,90,.18);overflow:hidden;border:2px solid rgba(255,255,255,.5);filter:url(#mg-wc);}',
+      '.mg-bottle{position:relative;width:80px;height:160px;}',
+      '.mg-teat{position:absolute;top:-1px;left:50%;transform:translateX(-50%);width:22px;height:27px;background:radial-gradient(ellipse at 42% 28%,#fbf1dd 0%,#efdcbb 62%,#e2c99e 100%);border-radius:46% 46% 40% 40%/62% 62% 38% 38%;box-shadow:inset 0 -3px 5px rgba(180,140,90,.22),inset 2px 3px 4px rgba(255,255,255,.6);z-index:4;filter:url(#mg-wc);}',
+      '.mg-teat::after{content:"";position:absolute;top:5px;left:6px;width:5px;height:11px;border-radius:50%;background:linear-gradient(160deg,rgba(255,255,255,.75),rgba(255,255,255,0));}',
+      '.mg-teat::before{content:"";position:absolute;bottom:1px;left:50%;transform:translateX(-50%);width:25px;height:5px;border-radius:50%;background:linear-gradient(180deg,#e9d4ac,#dcc193);box-shadow:inset 0 -1px 2px rgba(150,110,60,.3);}',
+      '.mg-collar{position:absolute;top:18px;left:50%;transform:translateX(-50%);width:49px;height:14px;border-radius:5px;background:linear-gradient(180deg,#f5b9bf,#e8b4b8 60%,#d99aa0);box-shadow:inset 0 -2px 3px rgba(150,90,95,.3),0 1px 3px rgba(0,0,0,.08);z-index:3;filter:url(#mg-wc);}',
+      '.mg-bottle-body{position:absolute;top:28px;left:50%;transform:translateX(-50%);width:68px;height:128px;border-radius:13px 13px 25px 25px/16px 16px 34px 34px;background:linear-gradient(105deg,rgba(255,255,255,.55),rgba(232,224,212,.4));box-shadow:inset 7px 0 12px rgba(255,255,255,.6),inset -9px 0 14px rgba(180,170,155,.35),0 8px 12px rgba(120,110,90,.18);overflow:hidden;border:2px solid rgba(255,255,255,.5);filter:url(#mg-wc);}',
       '.mg-milk{position:absolute;left:0;right:0;bottom:0;height:0%;background:linear-gradient(180deg,#fbfaf6 0%,#f6f2ea 60%,#efe9dd 100%);transition:height .65s cubic-bezier(.34,1.3,.5,1);}',
-      '.mg-milk::before{content:"";position:absolute;top:-9px;left:-10%;width:120%;height:18px;background:radial-gradient(ellipse 28px 10px at 20% 50%,#fbfaf6 60%,transparent 70%),radial-gradient(ellipse 30px 10px at 55% 60%,#fbfaf6 60%,transparent 70%),radial-gradient(ellipse 28px 10px at 85% 50%,#fbfaf6 60%,transparent 70%);animation:mgWave 3s ease-in-out infinite;}',
+      '.mg-milk::before{content:"";position:absolute;top:-6px;left:-10%;width:120%;height:11px;background:radial-gradient(ellipse 17px 6px at 20% 50%,#fbfaf6 60%,transparent 70%),radial-gradient(ellipse 18px 6px at 55% 60%,#fbfaf6 60%,transparent 70%),radial-gradient(ellipse 17px 6px at 85% 50%,#fbfaf6 60%,transparent 70%);animation:mgWave 3s ease-in-out infinite;}',
       '@keyframes mgWave{0%,100%{transform:translateX(0)}50%{transform:translateX(-10px)}}',
-      '.mg-bottle-shine{position:absolute;top:12px;left:16px;width:12px;height:140px;border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,.75),rgba(255,255,255,0));z-index:5;}',
-      '.mg-ticks{position:absolute;top:46px;bottom:0;right:0;transform:translateX(32px);z-index:6;}',
-      '.mg-ticks i{position:absolute;right:0;width:12px;height:2px;border-radius:2px;background:rgba(120,110,95,.4);}',
-      '.mg-ticks i.big{width:18px;}',
-      '.mg-ticks i span{position:absolute;right:16px;top:-7px;font-size:.58rem;color:var(--muted);}',
+      '.mg-bottle-shine{position:absolute;top:7px;left:10px;width:7px;height:86px;border-radius:5px;background:linear-gradient(180deg,rgba(255,255,255,.75),rgba(255,255,255,0));z-index:5;}',
+      '.mg-ticks{position:absolute;top:28px;bottom:0;right:0;transform:translateX(20px);z-index:6;}',
+      '.mg-ticks i{position:absolute;right:0;width:8px;height:2px;border-radius:2px;background:rgba(120,110,95,.4);}',
+      '.mg-ticks i.big{width:12px;}',
+      '.mg-ticks i span{position:absolute;right:10px;top:-7px;font-size:.55rem;color:var(--muted);}',
       '@keyframes mgSqueeze{0%,100%{transform:scaleY(1)}40%{transform:scaleY(.9) scaleX(1.03)}}',
       '.mg-bottle.pulse{animation:mgSqueeze .4s ease;}'
     ].join('');
@@ -2447,10 +2447,7 @@ function startPumpMinigame(mode) {
   }
 
   host.innerHTML = `
-    <div style="font-size:0.85rem;color:var(--charcoal);font-weight:700;">
-      ${isElectric ? "🔇 משאבה חשמלית" : "🔉 משאבה ידנית"}
-    </div>
-    <div style="position:relative;display:flex;align-items:flex-end;">
+    <div style="display:flex;align-items:center;gap:1.6rem;direction:rtl;">
       <div class="mg-bottle" id="mg-bottle">
         <div class="mg-teat"></div>
         <div class="mg-collar"></div>
@@ -2460,18 +2457,23 @@ function startPumpMinigame(mode) {
         </div>
         <div class="mg-ticks" id="mg-ticks"></div>
       </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.6rem;">
+        <div style="font-size:0.85rem;color:var(--charcoal);font-weight:700;">
+          ${isElectric ? "🔇 משאבה חשמלית" : "🔉 משאבה ידנית"}
+        </div>
+        <div class="pump-progress" style="font-size:0.8rem;color:var(--muted);">
+          ${isElectric ? "מתמלא..." : "0/10 לחיצות"}
+        </div>
+        ${isElectric ? "" : `
+          <button class="pump-btn" style="
+            padding:0.55rem 1.4rem; font-size:0.9rem; font-weight:700;
+            background:var(--sage); color:var(--charcoal);
+            border:2px solid var(--sage-dark); border-radius:14px;
+            cursor:pointer; direction:rtl;
+          ">לחצי לשאוב 🍼</button>
+        `}
+      </div>
     </div>
-    <div class="pump-progress" style="font-size:0.78rem;color:var(--muted);">
-      ${isElectric ? "מתמלא..." : "0/10 לחיצות"}
-    </div>
-    ${isElectric ? "" : `
-      <button class="pump-btn" style="
-        padding:0.55rem 1.4rem; font-size:0.9rem; font-weight:700;
-        background:var(--sage); color:var(--charcoal);
-        border:2px solid var(--sage-dark); border-radius:14px;
-        cursor:pointer; direction:rtl;
-      ">לחצי לשאוב 🍼</button>
-    `}
   `;
 
   // build measurement ticks
@@ -2539,14 +2541,6 @@ function startPumpMinigame(mode) {
 // ── מיני־משחק כביסה ──────────────────────────────────────────────────
 function startLaundryMinigame(mode) {
   const host = _minigameHost("laundry");
-  // --- TEMP DIAGNOSTIC ---
-  const _rv = document.getElementById("room-view");
-  const _da = document.getElementById("dialogue-area");
-  console.log("[LAUNDRY] room-view height:", _rv.getBoundingClientRect().height);
-  console.log("[LAUNDRY] dialogue-area height:", _da.getBoundingClientRect().height);
-  console.log("[LAUNDRY] room-view has-minigame:", _rv.classList.contains("has-minigame"));
-  console.log("[LAUNDRY] dialogue-area has-minigame:", _da.classList.contains("has-minigame"));
-  // --- END DIAGNOSTIC ---
   const isService = mode === "service";
 
   if (isService) {
@@ -2717,32 +2711,34 @@ function startLaundryMinigame(mode) {
 // ── מיני־משחק קפה ────────────────────────────────────────────────────
 function startCoffeeMinigame() {
   const host = _minigameHost("coffee");
+  document.getElementById("dialogue-area")?.classList.add("has-minigame");
+  document.getElementById("room-view")?.classList.add("has-minigame");
 
   if (!document.getElementById('mg-coffee-style')) {
     const s = document.createElement('style');
     s.id = 'mg-coffee-style';
     s.textContent = [
-      '.mg-coffee-scene{position:relative;width:260px;height:280px;display:flex;align-items:flex-end;justify-content:center;}',
-      '.mg-pour{position:absolute;top:0;left:calc(50% + 6px);transform:translateX(-50%);width:11px;height:140px;z-index:6;transform-origin:top center;opacity:0;}',
+      '.mg-coffee-scene{position:relative;width:208px;height:224px;display:flex;align-items:flex-end;justify-content:center;}',
+      '.mg-pour{position:absolute;top:0;left:calc(50% + 5px);transform:translateX(-50%);width:9px;height:112px;z-index:6;transform-origin:top center;opacity:0;}',
       '.mg-pour i{position:absolute;inset:0;border-radius:46% 46% 40% 40%;background:linear-gradient(180deg,#3a2414,#5e3a22 60%,#6b4126);box-shadow:inset 2px 0 3px rgba(255,255,255,.18);filter:url(#mg-wc);}',
       '.mg-pour i::after{content:"";position:absolute;top:0;left:2px;width:3px;height:100%;background:linear-gradient(180deg,rgba(255,235,205,.55),transparent);}',
       '.mg-pour.go{animation:mgPourIn .5s ease forwards,mgPourOut .6s ease 3.2s forwards;}',
       '@keyframes mgPourIn{0%{opacity:0;transform:translateX(-50%) scaleY(.2)}100%{opacity:1;transform:translateX(-50%) scaleY(1)}}',
       '@keyframes mgPourOut{0%{opacity:1;transform:translateX(-50%) scaleY(1)}100%{opacity:0;transform:translateX(-50%) scaleY(.1)}}',
-      '.mg-steam{position:absolute;bottom:195px;left:50%;width:100px;height:90px;transform:translateX(-50%);pointer-events:none;opacity:0;transition:opacity 1.2s ease;}',
+      '.mg-steam{position:absolute;bottom:156px;left:50%;width:80px;height:72px;transform:translateX(-50%);pointer-events:none;opacity:0;transition:opacity 1.2s ease;}',
       '.mg-steam.go{opacity:1;}',
-      '.mg-steam span{position:absolute;bottom:0;width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 50% 40%,rgba(255,255,255,.9),rgba(243,226,205,.2) 70%,transparent);filter:blur(2px);animation:mgSteam 3.4s ease-in-out infinite;}',
-      '.mg-steam span:nth-child(1){left:20px;animation-delay:0s;}',
-      '.mg-steam span:nth-child(2){left:40px;animation-delay:.9s;}',
-      '.mg-steam span:nth-child(3){left:58px;animation-delay:1.8s;}',
-      '.mg-steam span:nth-child(4){left:32px;animation-delay:2.5s;}',
-      '@keyframes mgSteam{0%{transform:translateY(0) scale(.7);opacity:0;}18%{opacity:.7;}55%{transform:translateY(-48px) scale(1.5) translateX(-8px);opacity:.4;}100%{transform:translateY(-82px) scale(2.2) translateX(6px);opacity:0;}}',
-      '.mg-mug-wrap{position:relative;width:170px;height:170px;margin-bottom:8px;}',
-      '.mg-handle{position:absolute;top:48px;right:-32px;width:50px;height:76px;border:12px solid rgba(196,212,192,.5);border-radius:50%;border-left-color:transparent;border-top-color:transparent;transform:rotate(20deg);box-shadow:inset 1px 1px 3px rgba(255,255,255,.5);filter:url(#mg-wc);}',
-      '.mg-mug{position:absolute;inset:0;background:linear-gradient(110deg,rgba(255,255,255,.42) 0%,rgba(196,212,192,.3) 40%,rgba(150,176,150,.28) 100%);border:2px solid rgba(255,255,255,.6);border-radius:18px 18px 58px 58px/14px 14px 52px 52px;box-shadow:inset 14px 0 22px rgba(255,255,255,.4),inset -16px 0 24px rgba(120,150,120,.18),0 14px 22px rgba(120,110,90,.16);overflow:hidden;filter:url(#mg-wc);}',
-      '.mg-mug::before{content:"";position:absolute;top:12px;right:18px;width:13px;height:110px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(255,255,255,0));z-index:5;}',
-      '.mg-well{position:absolute;top:5px;left:5px;right:5px;bottom:5px;border-radius:14px 14px 54px 54px/10px 10px 50px 50px;overflow:hidden;z-index:2;}',
-      '.mg-coffee-fill{position:absolute;left:0;right:0;bottom:0;height:0%;background:linear-gradient(180deg,#6b4327 0%,#5a361f 30%,#3a2414 100%);box-shadow:inset 22px 16px 36px rgba(150,96,54,.45),inset -18px -8px 26px rgba(20,10,4,.35);}',
+      '.mg-steam span{position:absolute;bottom:0;width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 50% 40%,rgba(255,255,255,.9),rgba(243,226,205,.2) 70%,transparent);filter:blur(2px);animation:mgSteam 3.4s ease-in-out infinite;}',
+      '.mg-steam span:nth-child(1){left:16px;animation-delay:0s;}',
+      '.mg-steam span:nth-child(2){left:32px;animation-delay:.9s;}',
+      '.mg-steam span:nth-child(3){left:46px;animation-delay:1.8s;}',
+      '.mg-steam span:nth-child(4){left:26px;animation-delay:2.5s;}',
+      '@keyframes mgSteam{0%{transform:translateY(0) scale(.7);opacity:0;}18%{opacity:.7;}55%{transform:translateY(-38px) scale(1.5) translateX(-6px);opacity:.4;}100%{transform:translateY(-66px) scale(2.2) translateX(5px);opacity:0;}}',
+      '.mg-mug-wrap{position:relative;width:136px;height:136px;margin-bottom:6px;}',
+      '.mg-handle{position:absolute;top:38px;right:-26px;width:40px;height:61px;border:10px solid rgba(196,212,192,.5);border-radius:50%;border-left-color:transparent;border-top-color:transparent;transform:rotate(20deg);box-shadow:inset 1px 1px 3px rgba(255,255,255,.5);filter:url(#mg-wc);}',
+      '.mg-mug{position:absolute;inset:0;background:linear-gradient(110deg,rgba(255,255,255,.42) 0%,rgba(196,212,192,.3) 40%,rgba(150,176,150,.28) 100%);border:2px solid rgba(255,255,255,.6);border-radius:14px 14px 46px 46px/11px 11px 42px 42px;box-shadow:inset 11px 0 18px rgba(255,255,255,.4),inset -13px 0 19px rgba(120,150,120,.18),0 11px 18px rgba(120,110,90,.16);overflow:hidden;filter:url(#mg-wc);}',
+      '.mg-mug::before{content:"";position:absolute;top:10px;right:14px;width:10px;height:88px;border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(255,255,255,0));z-index:5;}',
+      '.mg-well{position:absolute;top:4px;left:4px;right:4px;bottom:4px;border-radius:11px 11px 43px 43px/8px 8px 40px 40px;overflow:hidden;z-index:2;}',
+      '.mg-coffee-fill{position:absolute;left:0;right:0;bottom:0;height:0%;background:linear-gradient(180deg,#6b4327 0%,#5a361f 30%,#3a2414 100%);box-shadow:inset 18px 13px 29px rgba(150,96,54,.45),inset -14px -6px 21px rgba(20,10,4,.35);}',
       '.mg-crema{position:absolute;top:0;left:0;right:0;height:22%;background:linear-gradient(180deg,#f6e8ce 0%,#f0ddb8 45%,#cf9f63 85%,#b98a4e 100%);border-radius:50% 50% 0 0/60% 60% 0 0;opacity:0;transition:opacity 0.5s ease;}'
     ].join('');
     document.head.appendChild(s);
@@ -2858,6 +2854,8 @@ function startCoffeeMinigame() {
 // ── מיני־משחק קריאה ──────────────────────────────────────────────────
 function startReadingMinigame() {
   const host = _minigameHost("reading");
+  document.getElementById("dialogue-area")?.classList.add("has-minigame");
+  document.getElementById("room-view")?.classList.add("has-minigame");
   gameState.readingMode = true;  // מוריד מכפיל רעש ב-stealthMouseHandler
 
   const pages = [
