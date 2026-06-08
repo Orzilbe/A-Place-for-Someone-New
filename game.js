@@ -2539,6 +2539,14 @@ function startPumpMinigame(mode) {
 // ── מיני־משחק כביסה ──────────────────────────────────────────────────
 function startLaundryMinigame(mode) {
   const host = _minigameHost("laundry");
+  // --- TEMP DIAGNOSTIC ---
+  const _rv = document.getElementById("room-view");
+  const _da = document.getElementById("dialogue-area");
+  console.log("[LAUNDRY] room-view height:", _rv.getBoundingClientRect().height);
+  console.log("[LAUNDRY] dialogue-area height:", _da.getBoundingClientRect().height);
+  console.log("[LAUNDRY] room-view has-minigame:", _rv.classList.contains("has-minigame"));
+  console.log("[LAUNDRY] dialogue-area has-minigame:", _da.classList.contains("has-minigame"));
+  // --- END DIAGNOSTIC ---
   const isService = mode === "service";
 
   if (isService) {
