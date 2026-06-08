@@ -364,11 +364,6 @@ body {
   direction: rtl;
 }
 
-/* Expand dialogue area when a mini-game is active (desktop).
-   #room-view is flex:1 so it automatically surrenders the space. */
-#dialogue-area.has-minigame {
-  flex: 0 0 clamp(440px, 62vh, 560px);
-}
 
 #narration-box {
   flex: 1 1 auto;
@@ -990,10 +985,14 @@ body {
     transition: flex-basis 0.25s ease, max-height 0.25s ease;
   }
 
-  /* Shrink room during mini-games so dialogue (flex:1) gets the freed space */
+  /* Pump mini-game only: shrink room and expand dialogue so bottle animation is visible */
   #room-view.has-minigame {
     flex: 0 0 26vh;
     max-height: 26vh;
+  }
+
+  #dialogue-area.has-minigame {
+    flex: 0 0 clamp(380px, 58vh, 520px);
   }
 
   /* Dialogue takes remaining space above bottom bar */

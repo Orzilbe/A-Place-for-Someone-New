@@ -2384,8 +2384,6 @@ function _minigameHost(name) {
   runMinigameCleanup();
   gameState.activeMinigame = name;
   choiceButtons.innerHTML = "";
-  document.getElementById("dialogue-area")?.classList.add("has-minigame");
-  document.getElementById("room-view")?.classList.add("has-minigame");
   const host = document.createElement("div");
   host.className = "minigame";
   host.style.cssText = `
@@ -2405,6 +2403,8 @@ function _minigameHost(name) {
 // ── מיני־משחק שאיבה ──────────────────────────────────────────────────
 function startPumpMinigame(mode) {
   const host = _minigameHost("pump");
+  document.getElementById("dialogue-area")?.classList.add("has-minigame");
+  document.getElementById("room-view")?.classList.add("has-minigame");
   const isElectric = mode === "electric";
 
   if (isElectric) {
